@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling>=1.24,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hcc-survival"
+version = "0.1.0"
+description = "Leakage-safe, explainable one-year HCC survival prediction research case study"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Hamza El Massaoudy" }]
+dependencies = [
+  "joblib>=1.3,<2",
+  "matplotlib>=3.8,<4",
+  "PyYAML>=6.0,<7",
+  "numpy>=1.26,<3",
+  "pandas>=2.1,<3",
+  "requests>=2.31,<3",
+  "scikit-learn>=1.4,<2",
+  "scipy>=1.11,<2",
+  "seaborn>=0.13,<1",
+  "ucimlrepo>=0.0.7,<1",
+]
+
+[project.optional-dependencies]
+app = [
+  "streamlit>=1.36,<2",
+]
+boosting = [
+  "xgboost>=2.0,<4",
+]
+dev = [
+  "build>=1.2,<2",
+  "pre-commit>=3.6,<5",
+  "pytest>=8,<9",
+  "ruff>=0.5,<1",
+]
+
+[project.urls]
+Repository = "https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hcc_survival"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  ".github/workflows/ci.yml",
+  ".pre-commit-config.yaml",
+  "CHANGELOG.md",
+  "CITATION.cff",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  "app",
+  "configs",
+  "data/README.md",
+  "data/processed/.gitkeep",
+  "data/raw/.gitkeep",
+  "docs/DATA_CARD.md",
+  "docs/DATA_DICTIONARY.md",
+  "docs/DEVELOPMENT.md",
+  "docs/IMPLEMENTATION_PLAN.md",
+  "docs/INTENDED_USE.md",
+  "docs/LEARNING_GUIDE.md",
+  "docs/LIMITATIONS.md",
+  "docs/METHODS.md",
+  "docs/MODEL_CARD.md",
+  "docs/PRIVACY.md",
+  "docs/RELEASE_CHECKLIST.md",
+  "docs/REPRODUCIBILITY.md",
+  "docs/TEST_EVIDENCE.md",
+  "scripts/verify_project.py",
+  "src",
+  "tests",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+markers = ["integration: requires network access and the real UCI dataset"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"

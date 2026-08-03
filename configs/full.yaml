@@ -1,0 +1,38 @@
+experiment:
+  name: full
+  random_seed: 2025
+  outer_folds: 5
+  outer_repeats: 5
+  inner_folds: 3
+  bootstrap_resamples: 2000
+  n_jobs: 1
+models:
+  include: [dummy, reduced_clinical_logistic, logistic_regression, random_forest, xgboost]
+calibration:
+  variants: [uncalibrated, sigmoid]
+  selection_metric: brier
+  minimum_brier_improvement: 0.005
+threshold:
+  fixed: 0.5
+  optimize_training_only: true
+  objective: balanced_accuracy
+explainability:
+  permutation_repeats: 5
+selection:
+  candidate_variant: training_selected
+  primary_metric: roc_auc
+  primary_direction: higher
+  roc_auc_equivalence_margin: 0.01
+  secondary_metrics: [pr_auc, brier]
+  pr_auc_equivalence_margin: 0.01
+  brier_equivalence_margin: 0.01
+  ece_equivalence_margin: 0.01
+  stability_metrics: [roc_auc_repetition_std, brier_repetition_std]
+  roc_auc_stability_margin: 0.01
+  brier_stability_margin: 0.005
+  simplicity_order:
+    dummy: 0
+    reduced_clinical_logistic: 1
+    logistic_regression: 2
+    random_forest: 3
+    xgboost: 4

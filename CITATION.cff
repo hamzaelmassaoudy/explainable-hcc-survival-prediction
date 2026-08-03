@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: Explainable HCC Survival Prediction
+message: Please cite the repository and the UCI HCC Survival dataset.
+type: software
+authors:
+  - family-names: El Massaoudy
+    given-names: Hamza
+version: 0.1.0
+license: MIT
+repository-code: https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction
+keywords:
+  - hepatocellular carcinoma
+  - survival
+  - explainable machine learning
+references:
+  - type: dataset
+    authors:
+      - family-names: Santos
+        given-names: M.
+      - family-names: Abreu
+        given-names: P.
+      - family-names: Garcia-Laencina
+        given-names: P.
+      - family-names: Simao
+        given-names: A.
+      - family-names: Carvalho
+        given-names: A.
+    title: HCC Survival
+    publisher: UCI Machine Learning Repository
+    year: 2015
+    doi: 10.24432/C5TS4S
+    license: CC-BY-4.0

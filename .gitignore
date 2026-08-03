@@ -1,0 +1,115 @@
+# Python caches and tooling state
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local environments
+.venv/
+venv/
+env/
+
+# Secrets and editor state
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+*.p12
+*.pfx
+credentials/
+credentials.*
+secrets/
+secrets.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+
+# Local development state and audits
+.local/
+local_audit/
+
+# Downloaded data and patient-level derivatives
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/cache/
+*.parquet
+
+# Local reports, experiment outputs, and model binaries
+reports/
+artifacts/
+models/
+runs/
+outputs/
+results/
+publication/
+publication_bundle/
+*.pdf
+*.joblib
+*.pkl
+*.pickle
+*.onnx
+
+# Generated local analysis files, including outputs redirected to custom directories
+**/aggregate_metrics.csv
+**/anonymous_error_analysis.csv
+**/calibration_bins_*.csv
+**/confidence_intervals.json
+**/data_quality.json
+**/eda_summary.json
+**/environment.json
+**/EXPLAINABILITY.md
+**/exploratory_subgroup_*.csv
+**/final_logistic_coefficients.csv
+**/fold_metrics.csv
+**/fold_stability_and_decisions.csv
+**/held_out_permutation_importance.csv
+**/hcc_research_predictions.csv
+**/missingness_by_feature.csv
+**/missingness_by_outcome.csv
+**/missingness_sensitivity_*.csv
+**/missingness_sensitivity_*.json
+**/model_rankings_by_repetition.csv
+**/oof_predictions_all.csv
+**/permutation_importance_aggregated.csv
+**/provenance.json
+**/repetition_metrics.csv
+**/run_metadata.json
+**/selection.json
+**/SUMMARY.md
+**/target_distribution.csv
+**/figures/
+**/tables/
+*.png
+
+# Logs and runtime files
+logs/
+tmp/
+temp/
+*.log
+
+# Defense in depth for patient-level experiment derivatives written to custom paths
+**/oof_predictions*
+**/oof_predictions_all.csv
+**/oof_patient_*.csv
+**/patient_predictions*
+**/patient_missingness*
+**/patient_level*
+**/missingness_sensitivity_oof.csv
+**/missingness_by_patient.csv
+**/fold_assignments*
+
+# Build outputs
+build/
+dist/
+desktop.ini
