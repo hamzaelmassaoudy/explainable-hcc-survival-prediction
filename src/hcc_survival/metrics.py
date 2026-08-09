@@ -22,6 +22,53 @@ from sklearn.metrics import (
 )
 
 
+def _validate_binary_outcomes(y_true: np.ndarray) -> np.ndarray:
+    """Return non-empty binary one-year survival outcomes as integers."""
+
+    try:
+        outcomes = np.asarray(y_true, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Outcomes must be encoded as binary numeric values.") from exc
+    if outcomes.ndim != 1 or outcomes.size == 0:
+        raise ValueError("Outcomes must be a non-empty one-dimensional array.")
+    if not np.isfinite(outcomes).all() or not np.isin(outcomes, (0.0, 1.0)).all():
+        raise ValueError(
+            "Outcomes must be encoded as 0 (died within one year) or 1 (survived at one year)."
+        )
+    return outcomes.astype(int)
+
+
+def _validate_probability_inputs(
+    y_true: np.ndarray, probabilities: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validate aligned binary outcomes and finite one-year survival probabilities."""
+
+    outcomes = _validate_binary_outcomes(y_true)
+    try:
+        values = np.asarray(probabilities, dtype=float)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Probabilities must be numeric values.") from exc
+    if values.ndim != 1 or values.shape != outcomes.shape:
+        raise ValueError("Probabilities must be a one-dimensional array aligned with outcomes.")
+    if not np.isfinite(values).all():
+        raise ValueError("Probabilities must be finite.")
+    if (values < 0.0).any() or (values > 1.0).any():
+        raise ValueError("Probabilities must be between 0 and 1.")
+    return outcomes, values
+
+
+def _validate_threshold(threshold: float) -> float:
+    """Validate a fixed probability threshold used for decision-only metrics."""
+
+    try:
+        value = float(threshold)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Threshold must be a finite value between 0 and 1.") from exc
+    if not np.isfinite(value) or value < 0.0 or value > 1.0:
+        raise ValueError("Threshold must be a finite value between 0 and 1.")
+    return value
+
+
 def calibration_table(
     y_true: np.ndarray, probabilities: np.ndarray, n_bins: int = 5
 ) -> pd.DataFrame:
@@ -89,20 +136,22 @@ def calibration_slope_intercept(
 def decision_metrics(y_true: np.ndarray, decisions: np.ndarray) -> dict[str, float | int]:
     """Calculate decision-only metrics with survived-at-one-year as the positive class."""
 
-    predicted = np.asarray(decisions, dtype=int)
-    if predicted.shape != np.asarray(y_true).shape:
-        raise ValueError("Decision and outcome arrays must have the same shape.")
+    outcomes = _validate_binary_outcomes(y_true)
+    predicted = np.asarray(decisions)
+    if predicted.ndim != 1 or predicted.shape != outcomes.shape:
+        raise ValueError("Decisions must be a one-dimensional array aligned with outcomes.")
     if not np.isin(predicted, (0, 1)).all():
         raise ValueError("Decisions must be encoded as 0 or 1.")
-    tn, fp, fn, tp = confusion_matrix(y_true, predicted, labels=[0, 1]).ravel()
+    predicted = predicted.astype(int)
+    tn, fp, fn, tp = confusion_matrix(outcomes, predicted, labels=[0, 1]).ravel()
     death_specificity = tn / (tn + fp) if tn + fp else float("nan")
     npv = tn / (tn + fn) if tn + fn else float("nan")
     return {
-        "accuracy": float(accuracy_score(y_true, predicted)),
-        "balanced_accuracy": float(balanced_accuracy_score(y_true, predicted)),
-        "survivor_sensitivity": float(recall_score(y_true, predicted, zero_division=0)),
+        "accuracy": float(accuracy_score(outcomes, predicted)),
+        "balanced_accuracy": float(balanced_accuracy_score(outcomes, predicted)),
+        "survivor_sensitivity": float(recall_score(outcomes, predicted, zero_division=0)),
         "death_specificity": float(death_specificity),
-        "positive_predictive_value": float(precision_score(y_true, predicted, zero_division=0)),
+        "positive_predictive_value": float(precision_score(outcomes, predicted, zero_division=0)),
         "negative_predictive_value": float(npv),
         "f1": float(f1_score(y_true, predicted, zero_division=0)),
         "tn": int(tn),
@@ -123,25 +172,24 @@ def classification_metrics(
 ) -> dict[str, float | int]:
     """Calculate probability and fixed-threshold metrics for one-year survival."""
 
-    predicted = (probabilities >= threshold).astype(int)
-    auc = roc_auc_score(y_true, probabilities) if len(np.unique(y_true)) == 2 else float("nan")
-    pr_auc = (
-        average_precision_score(y_true, probabilities)
-        if len(np.unique(y_true)) == 2
-        else float("nan")
-    )
-    ece, usable_bins = calibration_error(y_true, probabilities)
-    intercept, slope = calibration_slope_intercept(y_true, probabilities)
+    outcomes, values = _validate_probability_inputs(y_true, probabilities)
+    threshold_value = _validate_threshold(threshold)
+    predicted = (values >= threshold_value).astype(int)
+    has_both_outcomes = len(np.unique(outcomes)) == 2
+    auc = roc_auc_score(outcomes, values) if has_both_outcomes else float("nan")
+    pr_auc = average_precision_score(outcomes, values) if has_both_outcomes else float("nan")
+    ece, usable_bins = calibration_error(outcomes, values)
+    intercept, slope = calibration_slope_intercept(outcomes, values)
     return {
         "roc_auc": float(auc),
         "pr_auc": float(pr_auc),
-        **decision_metrics(y_true, predicted),
-        "brier": float(brier_score_loss(y_true, probabilities)),
+        **decision_metrics(outcomes, predicted),
+        "brier": float(brier_score_loss(outcomes, values)),
         "calibration_ece_5_quantile_bins": ece,
         "calibration_usable_bins": usable_bins,
         "calibration_intercept": intercept,
         "calibration_slope": slope,
-        "threshold": float(threshold),
+        "threshold": threshold_value,
     }
 
 
