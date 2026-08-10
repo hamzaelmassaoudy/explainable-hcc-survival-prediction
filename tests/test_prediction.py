@@ -17,6 +17,8 @@ from hcc_survival.schemas import FEATURE_NAMES
 class _FixedProbabilityModel:
     """Small deterministic estimator used to test output handling."""
 
+    classes_ = np.array([0, 1])
+
     def predict_proba(self, records: pd.DataFrame) -> np.ndarray:
         return np.tile(np.array([0.25, 0.75]), (len(records), 1))
 
@@ -102,8 +104,38 @@ def test_missing_model_artifact_does_not_echo_local_path(tmp_path) -> None:
 
 def test_prediction_rejects_malformed_probability_output() -> None:
     class BadProbabilityModel:
+        classes_ = np.array([0, 1])
+
         def predict_proba(self, records: pd.DataFrame) -> np.ndarray:
             return np.array([[0.2]])
 
     with pytest.raises(ModelArtifactError, match="invalid probability shape"):
         predict_survival({"model": BadProbabilityModel()}, pd.DataFrame([{"Age": 60}]))
+
+
+@pytest.mark.parametrize("classes", [None, np.array([1, 0])])
+def test_prediction_requires_declared_survival_class_order(classes: np.ndarray | None) -> None:
+    model = _FixedProbabilityModel()
+    model.classes_ = classes
+
+    with pytest.raises(ModelArtifactError, match="class order"):
+        predict_survival({"model": model}, pd.DataFrame([{"Age": 60}]))
+
+
+@pytest.mark.parametrize(
+    "probabilities",
+    [
+        np.array([[-0.1, 1.1]]),
+        np.array([[0.2, 0.6]]),
+        np.array([[np.nan, 1.0]]),
+    ],
+)
+def test_prediction_rejects_invalid_probability_matrix(probabilities: np.ndarray) -> None:
+    class InvalidProbabilityModel:
+        classes_ = np.array([0, 1])
+
+        def predict_proba(self, records: pd.DataFrame) -> np.ndarray:
+            return np.repeat(probabilities, len(records), axis=0)
+
+    with pytest.raises(ModelArtifactError, match="invalid probabilities"):
+        predict_survival({"model": InvalidProbabilityModel()}, pd.DataFrame([{"Age": 60}]))

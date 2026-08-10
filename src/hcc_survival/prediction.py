@@ -170,12 +170,19 @@ def load_model_bundle(path: Path | str) -> dict[str, Any]:
     return bundle
 
 
-def predict_survival(bundle: dict[str, Any], records: pd.DataFrame) -> pd.DataFrame:
-    """Return clearly labeled one-year survival and mortality probabilities."""
+def _validated_probability_matrix(model: Any, prepared: pd.DataFrame) -> np.ndarray:
+    """Return a probability matrix that matches the project's binary target contract."""
 
-    prepared = prepare_prediction_frame(records)
+    expected_classes = np.array([0, 1])
+    classes = np.asarray(getattr(model, "classes_", ()))
+    if classes.shape != expected_classes.shape or not np.array_equal(classes, expected_classes):
+        raise ModelArtifactError(
+            "The local model artifact must use class order 0 = died within one year and "
+            "1 = survived at one year. Regenerate the provisional local research model with "
+            f"`{MODEL_RECOVERY_COMMAND}`."
+        )
     try:
-        probabilities = np.asarray(bundle["model"].predict_proba(prepared), dtype=float)
+        probabilities = np.asarray(model.predict_proba(prepared), dtype=float)
     except Exception as exc:
         raise ModelArtifactError(
             "The local model artifact could not generate a prediction. Regenerate the "
@@ -186,12 +193,24 @@ def predict_survival(bundle: dict[str, Any], records: pd.DataFrame) -> pd.DataFr
             "The local model artifact returned an invalid probability shape. Regenerate the "
             f"provisional local research model with `{MODEL_RECOVERY_COMMAND}`."
         )
-    survival = probabilities[:, 1]
-    if not np.isfinite(survival).all() or ((survival < 0) | (survival > 1)).any():
+    if (
+        not np.isfinite(probabilities).all()
+        or ((probabilities < 0) | (probabilities > 1)).any()
+        or not np.allclose(probabilities.sum(axis=1), 1.0, rtol=0.0, atol=1e-8)
+    ):
         raise ModelArtifactError(
             "The local model artifact returned invalid probabilities. Regenerate the "
             f"provisional local research model with `{MODEL_RECOVERY_COMMAND}`."
         )
+    return probabilities
+
+
+def predict_survival(bundle: dict[str, Any], records: pd.DataFrame) -> pd.DataFrame:
+    """Return clearly labeled one-year survival and mortality probabilities."""
+
+    prepared = prepare_prediction_frame(records)
+    probabilities = _validated_probability_matrix(bundle.get("model"), prepared)
+    survival = probabilities[:, 1]
     result = prepared.loc[:, records.columns].reset_index(drop=True).copy()
     result["model_estimated_one_year_survival_probability"] = survival
     result["model_estimated_one_year_mortality_probability"] = 1 - survival
