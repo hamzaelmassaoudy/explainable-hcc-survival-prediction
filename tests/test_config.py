@@ -67,3 +67,17 @@ def test_invalid_configuration_sections_are_rejected(
 
     with pytest.raises(ConfigurationError, match=message):
         load_config(path)
+
+
+@pytest.mark.parametrize("name", ["../outside", "nested/run", r"nested\run", r"C:\outside"])
+def test_path_like_experiment_names_are_rejected(tmp_path: Path, name: str) -> None:
+    """Experiment labels cannot redirect local artifact paths."""
+
+    baseline = yaml.safe_load((PROJECT_ROOT / "configs" / "fast.yaml").read_text(encoding="utf-8"))
+    candidate = deepcopy(baseline)
+    candidate["experiment"]["name"] = name
+    path = tmp_path / "invalid-name.yaml"
+    path.write_text(yaml.safe_dump(candidate), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="without path separators or drive prefixes"):
+        load_config(path)

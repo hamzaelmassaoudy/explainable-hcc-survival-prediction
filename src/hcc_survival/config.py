@@ -65,6 +65,10 @@ def _validate_experiment(experiment: Any) -> None:
     name = experiment.get("name")
     if not isinstance(name, str) or not name.strip():
         raise ConfigurationError("experiment.name must be a non-empty string.")
+    if name != name.strip() or any(character in name for character in ("/", "\\", ":")):
+        raise ConfigurationError(
+            "experiment.name must be a non-empty label without path separators or drive prefixes."
+        )
     for key in ("outer_folds", "outer_repeats", "inner_folds", "bootstrap_resamples"):
         _positive_integer(experiment.get(key), f"experiment.{key}")
     if experiment["outer_folds"] < 2 or experiment["inner_folds"] < 2:

@@ -104,10 +104,13 @@ def create_run_directory(config: dict[str, Any], root: Path | str = DEFAULT_ARTI
 
     root = ensure_local_output_path(root, purpose="Experiment artifacts")
     root.mkdir(parents=True, exist_ok=True)
+    resolved_root = root.resolve()
     config_text = yaml.safe_dump(config, sort_keys=True)
     digest = hashlib.sha256(config_text.encode()).hexdigest()[:8]
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     run_dir = root / f"{config['experiment']['name']}-{timestamp}-{digest}"
+    if not run_dir.resolve().is_relative_to(resolved_root):
+        raise ValueError("Experiment artifacts must remain under the configured output root.")
     if run_dir.exists():
         raise FileExistsError(f"Run directory already exists: {run_dir}")
     for child in ("figures", "tables", "models"):
