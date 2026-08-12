@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from hcc_survival.metrics import classification_metrics, decision_metrics
+from hcc_survival.metrics import (
+    calibration_error,
+    calibration_table,
+    classification_metrics,
+    decision_metrics,
+)
 
 
 def test_specificity_and_npv():
@@ -49,3 +54,46 @@ def test_decision_metrics_rejects_invalid_outcomes_and_decisions():
         decision_metrics(np.array([0, 1]), np.array([0, 2]))
     with pytest.raises(ValueError, match="Decisions must be encoded as 0 or 1"):
         decision_metrics(np.array([0, 1]), np.array([0.0, 0.5]))
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "probabilities", "message"),
+    [
+        (np.array([0, 1]), np.array([0.2, np.nan]), "Probabilities must be finite"),
+        (np.array([0, 1]), np.array([0.2, 1.1]), "Probabilities must be between 0 and 1"),
+        (np.array([0, 2]), np.array([0.2, 0.8]), "Outcomes must be encoded as 0"),
+    ],
+)
+def test_calibration_table_rejects_invalid_inputs(outcomes, probabilities, message):
+    with pytest.raises(ValueError, match=message):
+        calibration_table(outcomes, probabilities)
+
+
+def test_calibration_error_requires_aligned_inputs():
+    with pytest.raises(ValueError, match="aligned with outcomes"):
+        calibration_error(np.array([0, 1]), np.array([0.2]))
+
+
+@pytest.mark.parametrize("n_bins", [0, -1, 1.5, True])
+def test_calibration_table_requires_a_positive_integer_bin_count(n_bins):
+    with pytest.raises(ValueError, match="positive integer"):
+        calibration_table(np.array([0, 1]), np.array([0.2, 0.8]), n_bins=n_bins)
+
+
+def test_constant_probabilities_produce_one_calibration_bin():
+    table = calibration_table(
+        np.array([0, 1, 1, 0]),
+        np.full(4, 0.25),
+        n_bins=5,
+    )
+    error, usable_bins = calibration_error(
+        np.array([0, 1, 1, 0]),
+        np.full(4, 0.25),
+        n_bins=5,
+    )
+
+    assert table["n"].tolist() == [4]
+    assert table["mean_predicted"].tolist() == [0.25]
+    assert table["observed_survival"].tolist() == [0.5]
+    assert error == pytest.approx(0.25)
+    assert usable_bins == 1

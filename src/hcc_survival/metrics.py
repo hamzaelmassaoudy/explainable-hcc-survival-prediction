@@ -69,23 +69,33 @@ def _validate_threshold(threshold: float) -> float:
     return value
 
 
+def _validate_calibration_bins(n_bins: int) -> int:
+    """Validate the requested number of descriptive calibration bins."""
+
+    if (
+        isinstance(n_bins, (bool, np.bool_))
+        or not isinstance(n_bins, (int, np.integer))
+        or n_bins < 1
+    ):
+        raise ValueError("Number of calibration bins must be a positive integer.")
+    return int(n_bins)
+
+
 def calibration_table(
     y_true: np.ndarray, probabilities: np.ndarray, n_bins: int = 5
 ) -> pd.DataFrame:
     """Return equal-frequency calibration bins without discarding duplicate edges."""
 
-    frame = pd.DataFrame({"y": y_true, "p": probabilities}).dropna()
-    if frame.empty:
-        return pd.DataFrame(
-            columns=["bin", "n", "mean_predicted", "observed_survival", "absolute_gap"]
-        )
+    outcomes, values = _validate_probability_inputs(y_true, probabilities)
+    bin_count = _validate_calibration_bins(n_bins)
+    frame = pd.DataFrame({"y": outcomes, "p": values})
     if frame["p"].nunique() == 1:
         frame["bin"] = 1
     else:
         frame["bin"] = (
             pd.qcut(
                 frame["p"],
-                q=min(n_bins, len(frame)),
+                q=min(bin_count, len(frame)),
                 labels=False,
                 duplicates="drop",
             )
