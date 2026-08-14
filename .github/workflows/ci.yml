@@ -22,6 +22,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev,app]"
       - run: python -m build
+      - run: python scripts/check_distribution_contents.py --dist-dir dist
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -m "not integration"

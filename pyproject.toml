@@ -70,6 +70,7 @@ only-include = [
   "docs/RELEASE_CHECKLIST.md",
   "docs/REPRODUCIBILITY.md",
   "docs/TEST_EVIDENCE.md",
+  "scripts/check_distribution_contents.py",
   "scripts/verify_project.py",
   "src",
   "tests",
