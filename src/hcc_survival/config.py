@@ -32,6 +32,40 @@ _STABILITY_MARGINS = {
     "roc_auc_repetition_std": "roc_auc_stability_margin",
     "brier_repetition_std": "brier_stability_margin",
 }
+_SECTION_KEYS = {
+    "experiment": frozenset(
+        {
+            "name",
+            "random_seed",
+            "outer_folds",
+            "outer_repeats",
+            "inner_folds",
+            "bootstrap_resamples",
+            "n_jobs",
+        }
+    ),
+    "models": frozenset({"include"}),
+    "calibration": frozenset({"variants", "selection_metric", "minimum_brier_improvement"}),
+    "threshold": frozenset({"fixed", "optimize_training_only", "objective"}),
+    "explainability": frozenset({"permutation_repeats"}),
+    "selection": frozenset(
+        {
+            "candidate_variant",
+            "primary_metric",
+            "primary_direction",
+            "roc_auc_equivalence_margin",
+            "secondary_metrics",
+            "pr_auc_equivalence_margin",
+            "brier_equivalence_margin",
+            "ece_equivalence_margin",
+            "stability_metrics",
+            "roc_auc_stability_margin",
+            "brier_stability_margin",
+            "simplicity_order",
+        }
+    ),
+}
+_TOP_LEVEL_KEYS = frozenset(_SECTION_KEYS)
 
 
 def _non_negative_finite(value: Any, name: str) -> None:
@@ -41,6 +75,22 @@ def _non_negative_finite(value: Any, name: str) -> None:
         raise ConfigurationError(f"{name} must be a non-negative finite number.")
     if not isfinite(value) or value < 0:
         raise ConfigurationError(f"{name} must be a non-negative finite number.")
+
+
+def _validate_mapping_keys(
+    mapping: dict[Any, Any], allowed: frozenset[str], section: str | None = None
+) -> None:
+    """Reject unrecognized keys so misspelled settings cannot be silently ignored."""
+
+    unexpected = sorted(
+        (key for key in mapping if not isinstance(key, str) or key not in allowed),
+        key=repr,
+    )
+    if unexpected:
+        labels = ", ".join(
+            f"{section}.{key}" if section is not None else str(key) for key in unexpected
+        )
+        raise ConfigurationError(f"Unsupported configuration keys: {labels}.")
 
 
 def _positive_integer(value: Any, name: str) -> None:
@@ -62,6 +112,7 @@ def _validate_experiment(experiment: Any) -> None:
 
     if not isinstance(experiment, dict):
         raise ConfigurationError("experiment must be a mapping.")
+    _validate_mapping_keys(experiment, _SECTION_KEYS["experiment"], "experiment")
     name = experiment.get("name")
     if not isinstance(name, str) or not name.strip():
         raise ConfigurationError("experiment.name must be a non-empty string.")
@@ -84,6 +135,7 @@ def _validate_models(models: Any) -> None:
 
     if not isinstance(models, dict):
         raise ConfigurationError("models must be a mapping.")
+    _validate_mapping_keys(models, _SECTION_KEYS["models"], "models")
     included = models.get("include")
     if not isinstance(included, list) or not included:
         raise ConfigurationError("models.include must be a non-empty list of model names.")
@@ -98,6 +150,7 @@ def _validate_explainability(explainability: Any) -> None:
 
     if not isinstance(explainability, dict):
         raise ConfigurationError("explainability must be a mapping.")
+    _validate_mapping_keys(explainability, _SECTION_KEYS["explainability"], "explainability")
     _positive_integer(
         explainability.get("permutation_repeats"),
         "explainability.permutation_repeats",
@@ -109,6 +162,7 @@ def _validate_calibration(calibration: Any) -> None:
 
     if not isinstance(calibration, dict):
         raise ConfigurationError("calibration must be a mapping.")
+    _validate_mapping_keys(calibration, _SECTION_KEYS["calibration"], "calibration")
     variants = calibration.get("variants")
     if not isinstance(variants, list) or not all(isinstance(item, str) for item in variants):
         raise ConfigurationError("calibration.variants must be a list of variant names.")
@@ -135,6 +189,7 @@ def _validate_threshold(threshold: Any) -> None:
 
     if not isinstance(threshold, dict):
         raise ConfigurationError("threshold must be a mapping.")
+    _validate_mapping_keys(threshold, _SECTION_KEYS["threshold"], "threshold")
     fixed = threshold.get("fixed")
     if isinstance(fixed, bool) or not isinstance(fixed, (int, float)):
         raise ConfigurationError("threshold.fixed must be a finite number from 0 to 1.")
@@ -154,6 +209,7 @@ def _validate_selection(selection: Any) -> None:
 
     if not isinstance(selection, dict):
         raise ConfigurationError("selection must be a mapping.")
+    _validate_mapping_keys(selection, _SECTION_KEYS["selection"], "selection")
     primary_metric = selection.get("primary_metric")
     if primary_metric not in _SELECTION_DIRECTIONS:
         raise ConfigurationError(
@@ -231,14 +287,8 @@ def load_config(path: Path | str) -> dict[str, Any]:
         raise ConfigurationError("Configuration file is not valid YAML.") from error
     if not isinstance(content, dict):
         raise ConfigurationError("Configuration root must be a mapping.")
-    required = {
-        "experiment",
-        "models",
-        "calibration",
-        "threshold",
-        "explainability",
-        "selection",
-    }
+    _validate_mapping_keys(content, _TOP_LEVEL_KEYS)
+    required = _TOP_LEVEL_KEYS
     missing = required - set(content)
     if missing:
         raise ConfigurationError(f"Missing configuration sections: {sorted(missing)}")

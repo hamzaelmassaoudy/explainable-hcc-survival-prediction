@@ -81,3 +81,55 @@ def test_path_like_experiment_names_are_rejected(tmp_path: Path, name: str) -> N
 
     with pytest.raises(ConfigurationError, match="without path separators or drive prefixes"):
         load_config(path)
+
+
+@pytest.mark.parametrize(
+    ("section", "key", "value", "expected_key"),
+    [
+        (None, "notes", "unreviewed", "notes"),
+        ("experiment", "outer_repeat", 5, "experiment.outer_repeat"),
+        ("models", "incldue", ["dummy"], "models.incldue"),
+        (
+            "calibration",
+            "minimum_brier_improvment",
+            0.005,
+            "calibration.minimum_brier_improvment",
+        ),
+        ("threshold", "fixed_value", 0.5, "threshold.fixed_value"),
+        (
+            "explainability",
+            "permutation_repeat",
+            5,
+            "explainability.permutation_repeat",
+        ),
+        (
+            "selection",
+            "roc_auc_equivalence_magin",
+            0.01,
+            "selection.roc_auc_equivalence_magin",
+        ),
+    ],
+)
+def test_unknown_configuration_keys_are_rejected(
+    tmp_path: Path,
+    section: str | None,
+    key: str,
+    value: object,
+    expected_key: str,
+) -> None:
+    """Typos in configuration names fail instead of silently changing nothing."""
+
+    baseline = yaml.safe_load((PROJECT_ROOT / "configs" / "fast.yaml").read_text(encoding="utf-8"))
+    candidate = deepcopy(baseline)
+    if section is None:
+        candidate[key] = value
+    else:
+        candidate[section][key] = value
+    path = tmp_path / "unknown-key.yaml"
+    path.write_text(yaml.safe_dump(candidate), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError) as error:
+        load_config(path)
+
+    assert expected_key in str(error.value)
+    assert str(path) not in str(error.value)
