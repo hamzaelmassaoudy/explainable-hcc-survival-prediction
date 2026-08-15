@@ -81,6 +81,26 @@ def _validate_calibration_bins(n_bins: int) -> int:
     return int(n_bins)
 
 
+def _validate_bootstrap_resamples(n_resamples: int) -> int:
+    """Validate the requested number of patient-level bootstrap resamples."""
+
+    if (
+        isinstance(n_resamples, (bool, np.bool_))
+        or not isinstance(n_resamples, (int, np.integer))
+        or n_resamples < 1
+    ):
+        raise ValueError("Number of bootstrap resamples must be a positive integer.")
+    return int(n_resamples)
+
+
+def _validate_bootstrap_seed(seed: int) -> int:
+    """Validate the reproducible random seed used for bootstrap resampling."""
+
+    if isinstance(seed, (bool, np.bool_)) or not isinstance(seed, (int, np.integer)) or seed < 0:
+        raise ValueError("Bootstrap random seed must be a non-negative integer.")
+    return int(seed)
+
+
 def calibration_table(
     y_true: np.ndarray, probabilities: np.ndarray, n_bins: int = 5
 ) -> pd.DataFrame:
@@ -228,15 +248,18 @@ def bootstrap_confidence_intervals(
 ) -> dict[str, dict[str, Any]]:
     """Patient-level bootstrap CIs for aggregated out-of-fold predictions."""
 
-    rng = np.random.default_rng(seed)
+    outcomes, values = _validate_probability_inputs(y_true, probabilities)
+    resample_count = _validate_bootstrap_resamples(n_resamples)
+    random_seed = _validate_bootstrap_seed(seed)
+    rng = np.random.default_rng(random_seed)
     results: dict[str, dict[str, Any]] = {}
-    indices = np.arange(len(y_true))
+    indices = np.arange(len(outcomes))
     sampled_values: dict[str, list[float]] = {name: [] for name in BOOTSTRAP_METRIC_NAMES}
     invalid_by_metric = {name: 0 for name in BOOTSTRAP_METRIC_NAMES}
-    for _ in range(n_resamples):
+    for _ in range(resample_count):
         sample = rng.choice(indices, size=len(indices), replace=True)
         try:
-            sampled = classification_metrics(y_true[sample], probabilities[sample])
+            sampled = classification_metrics(outcomes[sample], values[sample])
         except ValueError:
             for name in BOOTSTRAP_METRIC_NAMES:
                 invalid_by_metric[name] += 1
@@ -253,10 +276,10 @@ def bootstrap_confidence_intervals(
         results[name] = {
             "lower_95": float(np.quantile(values, 0.025)) if values else float("nan"),
             "upper_95": float(np.quantile(values, 0.975)) if values else float("nan"),
-            "requested_resamples": n_resamples,
+            "requested_resamples": resample_count,
             "valid_resamples": len(values),
             "invalid_resamples": invalid,
-            "random_seed": seed,
+            "random_seed": random_seed,
             "method": "patient-level percentile bootstrap",
             "confidence_level": 0.95,
             "interpretation": "Internal-validation uncertainty; not external generalization.",
