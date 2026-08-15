@@ -131,12 +131,13 @@ def calibration_slope_intercept(
 ) -> tuple[float, float]:
     """Estimate calibration intercept and slope; return NaN when not estimable."""
 
-    if len(np.unique(y_true)) < 2 or len(y_true) < 30:
+    outcomes, values = _validate_probability_inputs(y_true, probabilities)
+    if len(np.unique(outcomes)) < 2 or len(outcomes) < 30:
         return float("nan"), float("nan")
-    clipped = np.clip(probabilities, 1e-6, 1 - 1e-6)
+    clipped = np.clip(values, 1e-6, 1 - 1e-6)
     try:
         model = LogisticRegression(C=1e6, solver="lbfgs", max_iter=2000)
-        model.fit(logit(clipped).reshape(-1, 1), y_true)
+        model.fit(logit(clipped).reshape(-1, 1), outcomes)
         return float(model.intercept_[0]), float(model.coef_[0, 0])
     except (ValueError, FloatingPointError):
         warnings.warn("Calibration intercept/slope could not be estimated.", stacklevel=2)

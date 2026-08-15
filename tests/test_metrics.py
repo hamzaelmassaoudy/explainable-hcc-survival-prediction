@@ -3,6 +3,7 @@ import pytest
 
 from hcc_survival.metrics import (
     calibration_error,
+    calibration_slope_intercept,
     calibration_table,
     classification_metrics,
     decision_metrics,
@@ -97,3 +98,35 @@ def test_constant_probabilities_produce_one_calibration_bin():
     assert table["observed_survival"].tolist() == [0.5]
     assert error == pytest.approx(0.25)
     assert usable_bins == 1
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "probabilities", "message"),
+    [
+        (np.array([0, 1]), np.array([0.2, np.nan]), "Probabilities must be finite"),
+        (np.array([0, 1]), np.array([0.2, 1.1]), "Probabilities must be between 0 and 1"),
+        (np.array([0, 2]), np.array([0.2, 0.8]), "Outcomes must be encoded as 0"),
+        (np.array([0, 1]), np.array([0.2]), "aligned with outcomes"),
+    ],
+)
+def test_calibration_slope_intercept_rejects_invalid_inputs(outcomes, probabilities, message):
+    """Standalone calibration estimates enforce the shared probability contract."""
+
+    with pytest.raises(ValueError, match=message):
+        calibration_slope_intercept(outcomes, probabilities)
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "probabilities"),
+    [
+        (np.tile([0, 1], 14), np.full(28, 0.5)),
+        (np.zeros(30, dtype=int), np.full(30, 0.5)),
+    ],
+)
+def test_calibration_slope_intercept_returns_nan_when_not_estimable(outcomes, probabilities):
+    """Valid inputs without enough outcome variation remain explicitly not estimable."""
+
+    intercept, slope = calibration_slope_intercept(outcomes, probabilities)
+
+    assert np.isnan(intercept)
+    assert np.isnan(slope)
