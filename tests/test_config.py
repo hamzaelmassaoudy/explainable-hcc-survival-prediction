@@ -83,6 +83,23 @@ def test_path_like_experiment_names_are_rejected(tmp_path: Path, name: str) -> N
         load_config(path)
 
 
+@pytest.mark.parametrize("included", [["not-a-model"], ["dummy", "not-a-model"]])
+def test_unknown_model_names_are_rejected(tmp_path: Path, included: list[str]) -> None:
+    """Configuration loading rejects model names that cannot be constructed."""
+
+    baseline = yaml.safe_load((PROJECT_ROOT / "configs" / "fast.yaml").read_text(encoding="utf-8"))
+    candidate = deepcopy(baseline)
+    candidate["models"]["include"] = included
+    path = tmp_path / "unknown-model.yaml"
+    path.write_text(yaml.safe_dump(candidate), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match="Unsupported model names") as error:
+        load_config(path)
+
+    assert "not-a-model" in str(error.value)
+    assert str(path) not in str(error.value)
+
+
 @pytest.mark.parametrize(
     ("section", "key", "value", "expected_key"),
     [

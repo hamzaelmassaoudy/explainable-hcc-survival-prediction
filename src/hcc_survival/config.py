@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 
+from hcc_survival.models import available_model_names
+
 
 class ConfigurationError(ValueError):
     """Raised for invalid experiment configuration."""
@@ -143,6 +145,12 @@ def _validate_models(models: Any) -> None:
         raise ConfigurationError("models.include must contain non-empty model names.")
     if len(included) != len(set(included)):
         raise ConfigurationError("models.include must not contain duplicates.")
+    supported = available_model_names()
+    unsupported = sorted(set(included) - set(supported))
+    if unsupported:
+        raise ConfigurationError(
+            f"Unsupported model names: {unsupported}. Supported model names are {list(supported)}."
+        )
 
 
 def _validate_explainability(explainability: Any) -> None:
