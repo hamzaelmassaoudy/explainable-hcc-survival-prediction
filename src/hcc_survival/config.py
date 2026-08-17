@@ -281,6 +281,24 @@ def _validate_selection(selection: Any) -> None:
             )
 
 
+def validate_config(config: Any) -> dict[str, Any]:
+    """Validate a complete in-memory experiment configuration."""
+
+    if not isinstance(config, dict):
+        raise ConfigurationError("Configuration root must be a mapping.")
+    _validate_mapping_keys(config, _TOP_LEVEL_KEYS)
+    missing = _TOP_LEVEL_KEYS - set(config)
+    if missing:
+        raise ConfigurationError(f"Missing configuration sections: {sorted(missing)}")
+    _validate_experiment(config["experiment"])
+    _validate_models(config["models"])
+    _validate_calibration(config["calibration"])
+    _validate_threshold(config["threshold"])
+    _validate_explainability(config["explainability"])
+    _validate_selection(config["selection"])
+    return config
+
+
 def load_config(path: Path | str) -> dict[str, Any]:
     """Load and validate an experiment YAML file."""
 
@@ -293,17 +311,4 @@ def load_config(path: Path | str) -> dict[str, Any]:
         raise ConfigurationError("Configuration file could not be read.") from error
     except yaml.YAMLError as error:
         raise ConfigurationError("Configuration file is not valid YAML.") from error
-    if not isinstance(content, dict):
-        raise ConfigurationError("Configuration root must be a mapping.")
-    _validate_mapping_keys(content, _TOP_LEVEL_KEYS)
-    required = _TOP_LEVEL_KEYS
-    missing = required - set(content)
-    if missing:
-        raise ConfigurationError(f"Missing configuration sections: {sorted(missing)}")
-    _validate_experiment(content["experiment"])
-    _validate_models(content["models"])
-    _validate_calibration(content["calibration"])
-    _validate_threshold(content["threshold"])
-    _validate_explainability(content["explainability"])
-    _validate_selection(content["selection"])
-    return content
+    return validate_config(content)

@@ -23,6 +23,7 @@ from sklearn.model_selection import (
 )
 
 from hcc_survival.artifacts import create_run_directory, write_json
+from hcc_survival.config import validate_config
 from hcc_survival.constants import DATASET_DOI
 from hcc_survival.metrics import (
     bootstrap_confidence_intervals,
@@ -214,6 +215,7 @@ def run_nested_experiment(
 ) -> Path:
     """Run configured models and persist auditable outer-fold artifacts."""
 
+    config = validate_config(config)
     started = datetime.now(UTC)
     experiment = config["experiment"]
     seed = int(experiment["random_seed"])

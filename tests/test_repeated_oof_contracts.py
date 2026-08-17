@@ -6,8 +6,9 @@ import json
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from hcc_survival.config import load_config
+from hcc_survival.config import ConfigurationError, load_config
 from hcc_survival.evaluation import run_nested_experiment
 
 
@@ -80,3 +81,19 @@ def test_outer_fold_train_and_validation_indices_do_not_overlap(synthetic_data, 
         train = set(json.loads(row.train_indices))
         validation = set(json.loads(row.validation_indices))
         assert train.isdisjoint(validation)
+
+
+def test_nested_experiment_validates_in_memory_config_before_creating_artifacts(
+    synthetic_data, tmp_path
+) -> None:
+    """Direct callers receive the same configuration checks as YAML-based callers."""
+
+    features, target = synthetic_data
+    config = _small_config(folds=3, repeats=1)
+    config["experiment"]["outer_repeat"] = 1
+    artifact_root = tmp_path / "artifacts"
+
+    with pytest.raises(ConfigurationError, match=r"experiment\.outer_repeat"):
+        run_nested_experiment(features, target, config, artifact_root=artifact_root)
+
+    assert not artifact_root.exists()
