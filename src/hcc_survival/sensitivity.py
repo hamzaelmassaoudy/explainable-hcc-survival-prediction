@@ -12,6 +12,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from hcc_survival.artifacts import ensure_local_output_path
+from hcc_survival.config import validate_config
 from hcc_survival.metrics import classification_metrics
 from hcc_survival.preprocessing import build_preprocessor
 
@@ -66,6 +67,7 @@ def run_missingness_sensitivity(
 ) -> Path:
     """Compare three predeclared fold-safe missingness configurations."""
 
+    config = validate_config(config)
     output_dir = ensure_local_output_path(output_dir, purpose="Sensitivity-analysis output")
     output_dir.mkdir(parents=True, exist_ok=True)
     seed = int(config["experiment"]["random_seed"])

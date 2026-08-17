@@ -109,6 +109,22 @@ def test_threshold_optimization_receives_the_configured_objective(monkeypatch) -
     assert seen == ["f1"]
 
 
+def test_missingness_sensitivity_validates_in_memory_config_before_creating_output(
+    synthetic_data, tmp_path
+) -> None:
+    """Direct sensitivity calls validate configuration before creating local output."""
+
+    features, target = synthetic_data
+    config = _small_config()
+    config["experiment"]["outer_repeat"] = 1
+    output_dir = tmp_path / "sensitivity"
+
+    with pytest.raises(ConfigurationError, match=r"experiment\.outer_repeat"):
+        run_missingness_sensitivity(features, target, config, output_dir)
+
+    assert not output_dir.exists()
+
+
 def test_missingness_exclusion_is_derived_per_outer_training_partition(
     synthetic_data, tmp_path
 ) -> None:
