@@ -87,6 +87,7 @@ SDIST_ALLOWED_MEMBERS = frozenset(
         "tests/test_scientific_contracts.py",
         "tests/test_selection_contracts.py",
         "tests/test_smoke_pipeline.py",
+        "tests/test_subgroup.py",
     }
 )
 

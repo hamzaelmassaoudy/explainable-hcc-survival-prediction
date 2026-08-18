@@ -11,11 +11,22 @@ MIN_GROUP_SIZE = 30
 MIN_OUTCOME_COUNT = 10
 
 
+def _require_patient_aggregated_predictions(predictions: pd.DataFrame) -> None:
+    """Require exactly one non-null prediction row for each patient."""
+
+    if "patient_index" not in predictions:
+        raise ValueError("Subgroup metrics require a patient_index column.")
+    patient_index = predictions["patient_index"]
+    if patient_index.isna().any() or patient_index.duplicated().any():
+        raise ValueError("Subgroup metrics require one patient-aggregated prediction per patient.")
+
+
 def exploratory_subgroup_metrics(
     predictions: pd.DataFrame, subgroup: pd.Series, *, threshold: float = 0.5
 ) -> pd.DataFrame:
     """Evaluate groups with predeclared suppression rules."""
 
+    _require_patient_aggregated_predictions(predictions)
     frame = predictions.copy()
     frame["subgroup"] = subgroup.reindex(frame["patient_index"]).to_numpy()
     rows: list[dict[str, object]] = []
