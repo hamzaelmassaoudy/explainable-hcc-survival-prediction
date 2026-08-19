@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from hcc_survival.subgroup import exploratory_subgroup_metrics
+from hcc_survival.subgroup import exploratory_subgroup_metrics, predefined_subgroups
 
 
 def _patient_predictions() -> pd.DataFrame:
@@ -58,3 +58,34 @@ def test_subgroup_metrics_require_patient_index() -> None:
 
     with pytest.raises(ValueError, match="patient_index column"):
         exploratory_subgroup_metrics(predictions, pd.Series("example", index=range(15)))
+
+
+def test_predefined_subgroups_align_with_validation_row_positions() -> None:
+    """Subgroup labels match positional patient identifiers from validation splits."""
+
+    features = pd.DataFrame(
+        {"Age": [55, 65, 75], "Gender": [0, 1, None]},
+        index=[101, 205, 309],
+    )
+    predictions = pd.DataFrame(
+        {
+            "patient_index": [0, 1, 2],
+            "observed": [0, 1, 1],
+            "probability_survived_one_year": [0.2, 0.8, 0.9],
+        }
+    )
+
+    subgroups = predefined_subgroups(features)
+
+    assert subgroups["sex"].index.tolist() == [0, 1, 2]
+    assert subgroups["age_group"].index.tolist() == [0, 1, 2]
+    assert set(exploratory_subgroup_metrics(predictions, subgroups["sex"])["subgroup"]) == {
+        "Female",
+        "Male",
+        "Unknown",
+    }
+    assert set(exploratory_subgroup_metrics(predictions, subgroups["age_group"])["subgroup"]) == {
+        "<60",
+        "60-69",
+        "70+",
+    }

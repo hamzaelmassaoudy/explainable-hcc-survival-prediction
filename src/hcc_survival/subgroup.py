@@ -83,12 +83,12 @@ def exploratory_subgroup_metrics(
 
 
 def predefined_subgroups(features: pd.DataFrame) -> dict[str, pd.Series]:
-    """Return sex and clinically interpretable age groups without outcome access."""
+    """Return subgroup labels indexed by validation-row position without outcome access."""
 
     age_groups = pd.cut(
-        features["Age"],
+        features["Age"].reset_index(drop=True),
         bins=[-np.inf, 59, 69, np.inf],
         labels=["<60", "60-69", "70+"],
     )
-    sex = features["Gender"].map({0: "Female", 1: "Male"}).fillna("Unknown")
+    sex = features["Gender"].reset_index(drop=True).map({0: "Female", 1: "Male"}).fillna("Unknown")
     return {"sex": sex, "age_group": age_groups}
