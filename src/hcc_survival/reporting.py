@@ -14,6 +14,7 @@ import yaml
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
 from hcc_survival.artifacts import ensure_local_output_path, package_versions, write_json
+from hcc_survival.config import validate_config
 from hcc_survival.constants import DATASET_DOI, DEFAULT_MODEL_PATH
 from hcc_survival.evaluation import _training_only_variants
 from hcc_survival.models import build_model
@@ -252,9 +253,17 @@ def fit_final_model(
 
     run_dir = ensure_local_output_path(run_dir, purpose="Final-model input")
     selection = json.loads((run_dir / "selection.json").read_text(encoding="utf-8"))
-    config = yaml.safe_load((run_dir / "config.yaml").read_text(encoding="utf-8"))
+    if not isinstance(selection, dict):
+        raise ValueError("Saved selection record must be a mapping.")
+    config = validate_config(yaml.safe_load((run_dir / "config.yaml").read_text(encoding="utf-8")))
+    model_name = selection.get("model")
+    if not isinstance(model_name, str) or model_name not in config["models"]["include"]:
+        raise ValueError("Saved selection model is not configured for this run.")
+    selected_variant = selection.get("variant")
+    if selected_variant != config["selection"]["candidate_variant"]:
+        raise ValueError("Saved selection variant does not match the configured candidate variant.")
     seed = int(config["experiment"]["random_seed"])
-    pipeline, grid = build_model(selection["model"], seed)
+    pipeline, grid = build_model(model_name, seed)
     if grid:
         fitted: Any = GridSearchCV(
             pipeline,
@@ -290,8 +299,8 @@ def fit_final_model(
         "feature_names": list(FEATURE_NAMES),
         "schema": schema_records(),
         "metadata": {
-            "model_name": selection["model"],
-            "validation_variant": selection["variant"],
+            "model_name": model_name,
+            "validation_variant": selected_variant,
             "final_calibration_status": calibration_status,
             "training_only_calibration_brier": training_brier,
             "training_timestamp_utc": datetime.now(UTC).isoformat(),

@@ -90,6 +90,39 @@ def test_uncalibrated_only_protocol_is_honored_by_validation_and_final_refit(
     assert set(bundle["metadata"]["training_only_calibration_brier"]) == {"uncalibrated"}
 
 
+@pytest.mark.parametrize(
+    ("selection", "message"),
+    [
+        (
+            {"model": "reduced_clinical_logistic", "variant": "training_selected"},
+            "not configured",
+        ),
+        (
+            {"model": "dummy", "variant": "uncalibrated"},
+            "does not match the configured candidate variant",
+        ),
+        (["dummy"], "must be a mapping"),
+    ],
+)
+def test_final_refit_rejects_selection_records_outside_the_run_configuration(
+    synthetic_data, tmp_path, selection: object, message: str
+) -> None:
+    """Final refits reject stale or malformed selection records before model fitting."""
+
+    features, target = synthetic_data
+    config = _small_config()
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _write_config(run_dir / "config.yaml", config)
+    (run_dir / "selection.json").write_text(json.dumps(selection), encoding="utf-8")
+    output_path = tmp_path / "final.joblib"
+
+    with pytest.raises(ValueError, match=message):
+        fit_final_model(features, target, run_dir, output_path=output_path)
+
+    assert not output_path.exists()
+
+
 def test_threshold_optimization_receives_the_configured_objective(monkeypatch) -> None:
     seen: list[str] = []
 
