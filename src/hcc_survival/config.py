@@ -212,7 +212,9 @@ def _validate_threshold(threshold: Any) -> None:
         )
 
 
-def _validate_selection(selection: Any) -> None:
+def _validate_selection(
+    selection: Any, *, models: dict[str, Any], calibration: dict[str, Any]
+) -> None:
     """Validate the configured sequence of model-selection gates."""
 
     if not isinstance(selection, dict):
@@ -267,13 +269,30 @@ def _validate_selection(selection: Any) -> None:
     for metric in stability:
         margin = _STABILITY_MARGINS[metric]
         _non_negative_finite(selection.get(margin), f"selection.{margin}")
-    if not isinstance(selection.get("candidate_variant"), str):
+    candidate_variant = selection.get("candidate_variant")
+    if not isinstance(candidate_variant, str):
         raise ConfigurationError("selection.candidate_variant must be a string.")
+    available_variants = {"training_selected", *calibration["variants"]}
+    if candidate_variant not in available_variants:
+        raise ConfigurationError(
+            "selection.candidate_variant must be one of "
+            f"{sorted(available_variants)} for the configured calibration variants."
+        )
     simplicity = selection.get("simplicity_order")
     if not isinstance(simplicity, dict) or not simplicity:
         raise ConfigurationError("selection.simplicity_order must be a non-empty mapping.")
     if not all(isinstance(name, str) for name in simplicity):
         raise ConfigurationError("selection.simplicity_order keys must be model names.")
+    unsupported_models = sorted(set(simplicity) - set(available_model_names()))
+    if unsupported_models:
+        raise ConfigurationError(
+            f"selection.simplicity_order contains unsupported model names: {unsupported_models}."
+        )
+    missing_models = sorted(set(models["include"]) - set(simplicity))
+    if missing_models:
+        raise ConfigurationError(
+            f"selection.simplicity_order is missing configured models: {missing_models}."
+        )
     for model, rank in simplicity.items():
         if isinstance(rank, bool) or not isinstance(rank, (int, float)) or not isfinite(rank):
             raise ConfigurationError(
@@ -295,7 +314,9 @@ def validate_config(config: Any) -> dict[str, Any]:
     _validate_calibration(config["calibration"])
     _validate_threshold(config["threshold"])
     _validate_explainability(config["explainability"])
-    _validate_selection(config["selection"])
+    _validate_selection(
+        config["selection"], models=config["models"], calibration=config["calibration"]
+    )
     return config
 
 

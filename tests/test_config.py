@@ -101,6 +101,89 @@ def test_unknown_model_names_are_rejected(tmp_path: Path, included: list[str]) -
 
 
 @pytest.mark.parametrize(
+    ("candidate_variant", "calibration_variants"),
+    [("uncalibrated", ["uncalibrated"]), ("sigmoid", ["uncalibrated", "sigmoid"])],
+)
+def test_configured_selection_variants_are_accepted(
+    tmp_path: Path, candidate_variant: str, calibration_variants: list[str]
+) -> None:
+    """Configured calibration variants remain eligible selection candidates."""
+
+    baseline = yaml.safe_load((PROJECT_ROOT / "configs" / "fast.yaml").read_text(encoding="utf-8"))
+    candidate = deepcopy(baseline)
+    candidate["models"]["include"] = ["dummy"]
+    candidate["calibration"]["variants"] = calibration_variants
+    candidate["selection"]["candidate_variant"] = candidate_variant
+    path = tmp_path / "configured-selection.yaml"
+    path.write_text(yaml.safe_dump(candidate), encoding="utf-8")
+
+    loaded = load_config(path)
+
+    assert loaded["selection"]["candidate_variant"] == candidate_variant
+
+
+@pytest.mark.parametrize(
+    ("candidate_variant", "calibration_variants", "missing_rank", "unexpected_rank", "message"),
+    [
+        (
+            "sigmoid",
+            ["uncalibrated"],
+            None,
+            None,
+            "selection.candidate_variant must be one of",
+        ),
+        (
+            "not-produced",
+            None,
+            None,
+            None,
+            "selection.candidate_variant must be one of",
+        ),
+        (
+            "training_selected",
+            None,
+            "logistic_regression",
+            None,
+            "selection.simplicity_order is missing configured models",
+        ),
+        (
+            "training_selected",
+            None,
+            None,
+            "not-a-model",
+            "selection.simplicity_order contains unsupported model names",
+        ),
+    ],
+)
+def test_selection_settings_must_match_configured_models_and_variants(
+    tmp_path: Path,
+    candidate_variant: str,
+    calibration_variants: list[str] | None,
+    missing_rank: str | None,
+    unexpected_rank: str | None,
+    message: str,
+) -> None:
+    """Selection settings must describe models and variants produced by the run."""
+
+    baseline = yaml.safe_load((PROJECT_ROOT / "configs" / "fast.yaml").read_text(encoding="utf-8"))
+    candidate = deepcopy(baseline)
+    candidate["selection"]["candidate_variant"] = candidate_variant
+    if calibration_variants is not None:
+        candidate["calibration"]["variants"] = calibration_variants
+    if missing_rank is not None:
+        candidate["selection"]["simplicity_order"].pop(missing_rank)
+    if unexpected_rank is not None:
+        candidate["selection"]["simplicity_order"][unexpected_rank] = 5
+    path = tmp_path / "invalid-selection.yaml"
+    path.write_text(yaml.safe_dump(candidate), encoding="utf-8")
+
+    with pytest.raises(ConfigurationError, match=message) as error:
+        load_config(path)
+
+    assert str(path) not in str(error.value)
+
+
+@pytest.mark.parametrize(
     ("section", "key", "value", "expected_key"),
     [
         (None, "notes", "unreviewed", "notes"),
