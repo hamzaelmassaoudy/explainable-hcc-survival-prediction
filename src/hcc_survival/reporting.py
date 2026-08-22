@@ -291,7 +291,10 @@ def fit_final_model(
         n_jobs=int(config["experiment"].get("n_jobs", 1)),
         calibration=config["calibration"],
     )
-    model = variants[calibration_status]
+    final_model_variant = (
+        calibration_status if selected_variant == "training_selected" else selected_variant
+    )
+    model = variants[final_model_variant]
     output_path = ensure_local_output_path(output_path, purpose="Final model artifact")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     bundle = {
@@ -301,6 +304,7 @@ def fit_final_model(
         "metadata": {
             "model_name": model_name,
             "validation_variant": selected_variant,
+            "final_model_variant": final_model_variant,
             "final_calibration_status": calibration_status,
             "training_only_calibration_brier": training_brier,
             "training_timestamp_utc": datetime.now(UTC).isoformat(),

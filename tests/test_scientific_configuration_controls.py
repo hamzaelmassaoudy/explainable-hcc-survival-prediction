@@ -86,8 +86,54 @@ def test_uncalibrated_only_protocol_is_honored_by_validation_and_final_refit(
     )
     model_path = fit_final_model(features, target, run_dir, output_path=tmp_path / "final.joblib")
     bundle = joblib.load(model_path)
+    assert bundle["metadata"]["final_model_variant"] == "uncalibrated"
     assert bundle["metadata"]["final_calibration_status"] == "uncalibrated"
     assert set(bundle["metadata"]["training_only_calibration_brier"]) == {"uncalibrated"}
+
+
+@pytest.mark.parametrize(
+    ("selected_variant", "expected_final_variant"),
+    [
+        ("uncalibrated", "uncalibrated"),
+        ("sigmoid", "sigmoid"),
+        ("training_selected", "sigmoid"),
+    ],
+)
+def test_final_refit_preserves_the_selected_calibration_variant(
+    synthetic_data, tmp_path, monkeypatch, selected_variant: str, expected_final_variant: str
+) -> None:
+    """Final refits retain explicit validation variants and resolve training-selected ones."""
+
+    features, target = synthetic_data
+    config = _small_config()
+    config["calibration"]["variants"] = ["uncalibrated", "sigmoid"]
+    config["selection"]["candidate_variant"] = selected_variant
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _write_config(run_dir / "config.yaml", config)
+    (run_dir / "selection.json").write_text(
+        json.dumps({"model": "dummy", "variant": selected_variant}), encoding="utf-8"
+    )
+
+    def fake_training_only_variants(*_args, **_kwargs):
+        return (
+            {"uncalibrated": "uncalibrated-model", "sigmoid": "sigmoid-model"},
+            {},
+            "sigmoid",
+            {"uncalibrated": 0.2, "sigmoid": 0.1},
+        )
+
+    monkeypatch.setattr(
+        "hcc_survival.reporting._training_only_variants", fake_training_only_variants
+    )
+
+    output_path = fit_final_model(features, target, run_dir, output_path=tmp_path / "final.joblib")
+    bundle = joblib.load(output_path)
+
+    assert bundle["model"] == f"{expected_final_variant}-model"
+    assert bundle["metadata"]["validation_variant"] == selected_variant
+    assert bundle["metadata"]["final_model_variant"] == expected_final_variant
+    assert bundle["metadata"]["final_calibration_status"] == "sigmoid"
 
 
 @pytest.mark.parametrize(
