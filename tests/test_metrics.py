@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+import hcc_survival.metrics as metrics
 from hcc_survival.metrics import (
     bootstrap_confidence_intervals,
     calibration_error,
@@ -150,6 +151,44 @@ def test_bootstrap_confidence_intervals_rejects_invalid_probability_inputs(
 
     with pytest.raises(ValueError, match=message):
         bootstrap_confidence_intervals(outcomes, probabilities, n_resamples=3, seed=7)
+
+
+@pytest.mark.parametrize("threshold", [-0.01, 1.01, float("nan")])
+def test_bootstrap_confidence_intervals_requires_a_valid_threshold(threshold):
+    """Bootstrap decision metrics use the same valid threshold contract as aggregates."""
+
+    with pytest.raises(ValueError, match="Threshold must be a finite value between 0 and 1"):
+        bootstrap_confidence_intervals(
+            np.array([0, 1]),
+            np.array([0.2, 0.8]),
+            n_resamples=3,
+            seed=7,
+            threshold=threshold,
+        )
+
+
+def test_bootstrap_confidence_intervals_pass_requested_threshold_to_resamples(monkeypatch):
+    """Each resampled decision metric uses the configured fixed threshold."""
+
+    seen_thresholds: list[float] = []
+    original = metrics.classification_metrics
+
+    def capture_metrics(
+        outcomes: np.ndarray, probabilities: np.ndarray, threshold: float = 0.5
+    ) -> dict[str, float | int]:
+        seen_thresholds.append(threshold)
+        return original(outcomes, probabilities, threshold=threshold)
+
+    monkeypatch.setattr(metrics, "classification_metrics", capture_metrics)
+    bootstrap_confidence_intervals(
+        np.tile([0, 1], 5),
+        np.tile([0.4, 0.6], 5),
+        n_resamples=3,
+        seed=7,
+        threshold=0.37,
+    )
+
+    assert seen_thresholds == [0.37] * 3
 
 
 @pytest.mark.parametrize("n_resamples", [0, -1, 1.0, 1.5, True, np.bool_(True)])

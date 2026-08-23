@@ -53,13 +53,20 @@ def test_calibration_configuration_rejects_unsupported_protocols(
 
 
 def test_uncalibrated_only_protocol_is_honored_by_validation_and_final_refit(
-    synthetic_data, tmp_path
+    synthetic_data, tmp_path, monkeypatch
 ) -> None:
     features, target = synthetic_data
     config = _small_config()
     config["calibration"]["variants"] = ["uncalibrated"]
     config["threshold"]["fixed"] = 0.37
     config["threshold"]["optimize_training_only"] = False
+    bootstrap_thresholds: list[float] = []
+
+    def fake_bootstrap(*_args, threshold: float = 0.5, **_kwargs):
+        bootstrap_thresholds.append(threshold)
+        return {}
+
+    monkeypatch.setattr("hcc_survival.evaluation.bootstrap_confidence_intervals", fake_bootstrap)
     run_dir = run_nested_experiment(features, target, config, artifact_root=tmp_path / "run")
 
     predictions = pd.read_csv(run_dir / "oof_predictions_all.csv")
@@ -69,6 +76,8 @@ def test_uncalibrated_only_protocol_is_honored_by_validation_and_final_refit(
     assert folds["threshold_source"].eq("fixed_configured").all()
     assert not folds["threshold_optimization_enabled"].any()
     assert folds["training_brier_sigmoid"].isna().all()
+    assert bootstrap_thresholds
+    assert set(bootstrap_thresholds) == {0.37}
 
     aggregate = pd.read_csv(run_dir / "aggregated_metrics.csv")
     assert "training_threshold_balanced_accuracy" in aggregate

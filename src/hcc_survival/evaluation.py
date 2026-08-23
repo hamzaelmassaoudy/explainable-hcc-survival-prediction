@@ -389,7 +389,8 @@ def run_nested_experiment(
     pd.DataFrame(importance_rows).to_csv(
         run_dir / "tables" / "held_out_permutation_importance.csv", index=False
     )
-    repetition_frame = _repetition_summaries(prediction_frame, float(config["threshold"]["fixed"]))
+    fixed_threshold = float(config["threshold"]["fixed"])
+    repetition_frame = _repetition_summaries(prediction_frame, fixed_threshold)
     repetition_frame.to_csv(run_dir / "tables" / "repetition_metrics.csv", index=False)
     summaries: list[dict[str, Any]] = []
     confidence: dict[str, Any] = {}
@@ -407,7 +408,7 @@ def run_nested_experiment(
         patient.to_csv(run_dir / f"oof_patient_{model}_{variant}.csv", index=False)
         y = patient["observed"].to_numpy()
         p = patient["probability_survived_one_year"].to_numpy()
-        fixed_metrics = classification_metrics(y, p, float(config["threshold"]["fixed"]))
+        fixed_metrics = classification_metrics(y, p, fixed_threshold)
         training_threshold_metrics = decision_metrics(
             y,
             (patient["training_threshold_vote_fraction"].to_numpy() >= 0.5).astype(int),
@@ -436,6 +437,7 @@ def run_nested_experiment(
             p,
             n_resamples=int(experiment["bootstrap_resamples"]),
             seed=seed,
+            threshold=fixed_threshold,
         )
         bins = calibration_table(y, p)
         bins.insert(0, "variant", variant)

@@ -245,12 +245,14 @@ def bootstrap_confidence_intervals(
     *,
     n_resamples: int,
     seed: int,
+    threshold: float = 0.5,
 ) -> dict[str, dict[str, Any]]:
     """Patient-level bootstrap CIs for aggregated out-of-fold predictions."""
 
     outcomes, values = _validate_probability_inputs(y_true, probabilities)
     resample_count = _validate_bootstrap_resamples(n_resamples)
     random_seed = _validate_bootstrap_seed(seed)
+    threshold_value = _validate_threshold(threshold)
     rng = np.random.default_rng(random_seed)
     results: dict[str, dict[str, Any]] = {}
     indices = np.arange(len(outcomes))
@@ -259,7 +261,9 @@ def bootstrap_confidence_intervals(
     for _ in range(resample_count):
         sample = rng.choice(indices, size=len(indices), replace=True)
         try:
-            sampled = classification_metrics(outcomes[sample], values[sample])
+            sampled = classification_metrics(
+                outcomes[sample], values[sample], threshold=threshold_value
+            )
         except ValueError:
             for name in BOOTSTRAP_METRIC_NAMES:
                 invalid_by_metric[name] += 1
