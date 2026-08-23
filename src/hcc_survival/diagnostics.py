@@ -163,6 +163,10 @@ def generate_experiment_tables(
 ) -> None:
     """Create model ranking, subgroup, missingness, quality, and error tables."""
 
+    # Validation artifacts use row positions from the .iloc-based outer splits.
+    features = features.reset_index(drop=True)
+    target = target.reset_index(drop=True)
+
     run_dir = ensure_local_output_path(run_dir, purpose="Diagnostic output")
     tables = run_dir / "tables"
     tables.mkdir(exist_ok=True)

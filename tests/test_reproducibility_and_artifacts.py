@@ -6,10 +6,12 @@ import hashlib
 import json
 
 import joblib
+import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from hcc_survival.config import load_config
+from hcc_survival.diagnostics import generate_experiment_tables
 from hcc_survival.evaluation import run_nested_experiment
 from hcc_survival.models import build_model
 from hcc_survival.prediction import load_model_bundle, predict_survival
@@ -86,3 +88,66 @@ def test_run_metadata_declares_positive_class(synthetic_data, tmp_path) -> None:
     metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
     assert metadata["positive_class"] == "1 = survived at one year"
     assert metadata["dataset_sha256"] == hashlib.sha256(source.read_bytes()).hexdigest()
+
+
+def test_diagnostic_missingness_aligns_with_validation_row_positions(
+    synthetic_data, tmp_path
+) -> None:
+    """Diagnostic summaries use the row positions saved in validation artifacts."""
+
+    features, _ = synthetic_data
+    source_index = pd.Index([101, 205, 309, 411])
+    features = features.iloc[:4].copy().fillna(0)
+    features.index = source_index
+    features["Age"] = [50.0, 60.0, 70.0, 80.0]
+    features["Gender"] = [0, 1, 0, 1]
+    features.loc[101, "Age"] = np.nan
+    features.loc[205, ["Age", "Gender"]] = np.nan
+    features.loc[411, ["Age", "Gender", "Symptoms"]] = np.nan
+    target = pd.Series([0, 1, 0, 1], index=source_index, name="Class")
+
+    run_dir = tmp_path / "diagnostic_run"
+    tables = run_dir / "tables"
+    tables.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "patient_index": [0, 1, 2, 3],
+            "model": ["dummy"] * 4,
+            "variant": ["training_selected"] * 4,
+            "observed": [0, 1, 0, 1],
+            "probability_survived_one_year": [0.8, 0.6, 0.1, 0.2],
+        }
+    ).to_csv(run_dir / "oof_predictions_all.csv", index=False)
+    pd.DataFrame(
+        {
+            "model": ["dummy"],
+            "variant": ["training_selected"],
+            "repeat": [0],
+            "roc_auc": [0.5],
+        }
+    ).to_csv(tables / "repetition_metrics.csv", index=False)
+    pd.DataFrame(
+        {
+            "model": ["dummy"],
+            "variant": ["training_selected"],
+            "repeat": [0],
+            "fold": [0],
+            "calibration_decision": ["not_requested"],
+            "selected_threshold": [0.5],
+            "best_params": ["{}"],
+            "roc_auc": [0.5],
+            "pr_auc": [0.5],
+            "brier": [0.25],
+            "survivor_sensitivity": [0.5],
+            "death_specificity": [0.5],
+        }
+    ).to_csv(run_dir / "fold_metrics.csv", index=False)
+    (run_dir / "selection.json").write_text(
+        json.dumps({"model": "dummy", "variant": "training_selected"}), encoding="utf-8"
+    )
+
+    generate_experiment_tables(run_dir, features, target)
+
+    summary = pd.read_csv(tables / "anonymous_error_analysis.csv").set_index("anonymous_pattern")
+    assert summary.loc["mean_missing_features_in_incorrect_cases", "value"] == 2.0
+    assert summary.loc["mean_missing_features_in_correct_cases", "value"] == 1.0
