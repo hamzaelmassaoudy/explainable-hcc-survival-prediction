@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+from types import SimpleNamespace
 
 import joblib
 import numpy as np
 import pandas as pd
+from matplotlib.axes import Axes
 from pandas.testing import assert_frame_equal
 
+import hcc_survival.diagnostics as diagnostics
 from hcc_survival.config import load_config
 from hcc_survival.diagnostics import generate_experiment_tables
 from hcc_survival.evaluation import run_nested_experiment
@@ -109,13 +112,16 @@ def test_diagnostic_missingness_aligns_with_validation_row_positions(
     run_dir = tmp_path / "diagnostic_run"
     tables = run_dir / "tables"
     tables.mkdir(parents=True)
+    config = _deterministic_config()
+    config["threshold"]["fixed"] = 0.37
+    (run_dir / "config.yaml").write_text(json.dumps(config), encoding="utf-8")
     pd.DataFrame(
         {
             "patient_index": [0, 1, 2, 3],
             "model": ["dummy"] * 4,
             "variant": ["training_selected"] * 4,
             "observed": [0, 1, 0, 1],
-            "probability_survived_one_year": [0.8, 0.6, 0.1, 0.2],
+            "probability_survived_one_year": [0.8, 0.4, 0.1, 0.2],
         }
     ).to_csv(run_dir / "oof_predictions_all.csv", index=False)
     pd.DataFrame(
@@ -149,5 +155,60 @@ def test_diagnostic_missingness_aligns_with_validation_row_positions(
     generate_experiment_tables(run_dir, features, target)
 
     summary = pd.read_csv(tables / "anonymous_error_analysis.csv").set_index("anonymous_pattern")
+    assert summary.loc["incorrect_at_0.37", "value"] == 2.0
+    assert summary.loc["within_0.05_of_threshold", "value"] == 1.0
     assert summary.loc["mean_missing_features_in_incorrect_cases", "value"] == 2.0
     assert summary.loc["mean_missing_features_in_correct_cases", "value"] == 1.0
+
+
+def test_diagnostic_figures_use_the_saved_fixed_threshold(tmp_path, monkeypatch) -> None:
+    """Confusion matrices use the fixed decision rule recorded with the run."""
+
+    run_dir = tmp_path / "diagnostic_run"
+    run_dir.mkdir()
+    config = _deterministic_config()
+    config["threshold"]["fixed"] = 0.37
+    (run_dir / "config.yaml").write_text(json.dumps(config), encoding="utf-8")
+    pd.DataFrame(
+        {
+            "patient_index": [0, 1, 2, 3],
+            "model": ["dummy"] * 4,
+            "variant": ["training_selected"] * 4,
+            "observed": [0, 1, 0, 1],
+            "probability_survived_one_year": [0.36, 0.37, 0.38, 0.2],
+        }
+    ).to_csv(run_dir / "oof_predictions_all.csv", index=False)
+    pd.DataFrame(
+        {
+            "model": ["dummy"],
+            "variant": ["training_selected"],
+            "roc_auc": [0.5],
+            "pr_auc": [0.5],
+            "brier": [0.25],
+        }
+    ).to_csv(run_dir / "fold_metrics.csv", index=False)
+
+    decisions: list[list[int]] = []
+    titles: list[str] = []
+    original_set_title = Axes.set_title
+
+    class CapturingDisplay:
+        """Small stand-in that records decisions while retaining real plot objects."""
+
+        @staticmethod
+        def from_predictions(_observed, predicted, **_kwargs):
+            decisions.append(pd.Series(predicted).astype(int).tolist())
+            figure, axis = diagnostics.plt.subplots()
+            return SimpleNamespace(ax_=axis, figure_=figure)
+
+    def capture_title(axis, label, *args, **kwargs):
+        titles.append(label)
+        return original_set_title(axis, label, *args, **kwargs)
+
+    monkeypatch.setattr(diagnostics, "ConfusionMatrixDisplay", CapturingDisplay)
+    monkeypatch.setattr(Axes, "set_title", capture_title)
+
+    diagnostics.generate_curve_figures(run_dir)
+
+    assert decisions == [[0, 1, 1, 0]]
+    assert "dummy: fixed threshold 0.37" in titles

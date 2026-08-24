@@ -18,6 +18,7 @@ from sklearn.metrics import (
 )
 
 from hcc_survival.artifacts import ensure_local_output_path
+from hcc_survival.config import load_config
 from hcc_survival.constants import DEFAULT_MODEL_PATH
 from hcc_survival.metrics import calibration_table
 from hcc_survival.schemas import PLAUSIBILITY_BOUNDS
@@ -48,10 +49,18 @@ def _patient_predictions(group: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _fixed_threshold(run_dir: Path) -> float:
+    """Load the fixed decision threshold saved with an experiment."""
+
+    config = load_config(run_dir / "config.yaml")
+    return float(config["threshold"]["fixed"])
+
+
 def generate_curve_figures(run_dir: Path | str) -> None:
     """Generate ROC, PR, calibration, confusion, and stability figures."""
 
     run_dir = ensure_local_output_path(run_dir, purpose="Diagnostic output")
+    fixed_threshold = _fixed_threshold(run_dir)
     figures = run_dir / "figures"
     figures.mkdir(exist_ok=True)
     predictions = pd.read_csv(run_dir / "oof_predictions_all.csv")
@@ -122,7 +131,7 @@ def generate_curve_figures(run_dir: Path | str) -> None:
 
     for model, group in serious.groupby("model"):
         patient = _patient_predictions(group)
-        predicted = (patient["probability_survived_one_year"] >= 0.5).astype(int)
+        predicted = (patient["probability_survived_one_year"] >= fixed_threshold).astype(int)
         display = ConfusionMatrixDisplay.from_predictions(
             patient["observed"],
             predicted,
@@ -131,7 +140,7 @@ def generate_curve_figures(run_dir: Path | str) -> None:
             cmap="Blues",
             colorbar=False,
         )
-        display.ax_.set_title(f"{model}: fixed threshold 0.50")
+        display.ax_.set_title(f"{model}: fixed threshold {fixed_threshold}")
         display.ax_.set_xlabel("Predicted one-year outcome")
         display.ax_.set_ylabel("Observed one-year outcome")
         display.figure_.tight_layout()
@@ -168,6 +177,7 @@ def generate_experiment_tables(
     target = target.reset_index(drop=True)
 
     run_dir = ensure_local_output_path(run_dir, purpose="Diagnostic output")
+    fixed_threshold = _fixed_threshold(run_dir)
     tables = run_dir / "tables"
     tables.mkdir(exist_ok=True)
     predictions = pd.read_csv(run_dir / "oof_predictions_all.csv")
@@ -223,12 +233,12 @@ def generate_experiment_tables(
     probability_frame = pd.DataFrame(all_models)
     selected_probability = patient["probability_survived_one_year"]
     observed = patient["observed"]
-    incorrect = (selected_probability >= 0.5).astype(int) != observed
+    incorrect = (selected_probability >= fixed_threshold).astype(int) != observed
     high_confidence_incorrect = incorrect & (
         ((selected_probability >= 0.8) & (observed == 0))
         | ((selected_probability <= 0.2) & (observed == 1))
     )
-    near_threshold = (selected_probability - 0.5).abs() <= 0.05
+    near_threshold = (selected_probability - fixed_threshold).abs() <= 0.05
     disagreement = probability_frame.max(axis=1) - probability_frame.min(axis=1)
     extensive_missingness = missingness >= 10
     plausibility_mask = pd.Series(False, index=features.index)
@@ -240,12 +250,12 @@ def generate_experiment_tables(
             plausibility_mask |= values > high
     logistic_rf_disagreement = pd.Series(False, index=patient.index)
     if {"logistic_regression", "random_forest"} <= set(probability_frame.columns):
-        logistic_rf_disagreement = (probability_frame["logistic_regression"] >= 0.5) != (
-            probability_frame["random_forest"] >= 0.5
-        )
+        logistic_rf_disagreement = (
+            probability_frame["logistic_regression"] >= fixed_threshold
+        ) != (probability_frame["random_forest"] >= fixed_threshold)
     error_summary = pd.DataFrame(
         [
-            ["incorrect_at_0.50", int(incorrect.sum())],
+            [f"incorrect_at_{fixed_threshold}", int(incorrect.sum())],
             ["high_confidence_incorrect", int(high_confidence_incorrect.sum())],
             ["within_0.05_of_threshold", int(near_threshold.sum())],
             ["model_disagreement_ge_0.30", int((disagreement >= 0.30).sum())],
