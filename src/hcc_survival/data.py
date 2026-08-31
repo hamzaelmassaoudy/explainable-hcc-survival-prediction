@@ -25,18 +25,31 @@ MISSING_MARKERS = ("?", "", "NA", "N/A", "null", "None")
 EXPECTED_RECORD_COUNT = 165
 OFFICIAL_ARCHIVE_URL = "https://archive.ics.uci.edu/static/public/423/hcc+survival.zip"
 _PROCESSED_DATA_ROOT = Path("data") / "processed"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class DataValidationError(ValueError):
     """Raised when local or downloaded data violate the documented HCC schema."""
 
 
-def _local_output_path(path: Path | str, root: Path, *, purpose: str) -> Path:
-    """Require a local output path to remain inside an ignored project directory."""
+def _resolve_local_path(path: Path) -> Path:
+    """Resolve relative paths from the checkout root when called inside it."""
 
-    candidate = Path(path)
+    if path.is_absolute():
+        return path.resolve()
+    project_root = _PROJECT_ROOT.resolve()
+    if (project_root / ".git").exists() and Path.cwd().resolve().is_relative_to(project_root):
+        return (project_root / path).resolve()
+    return path.resolve()
+
+
+def _local_output_path(path: Path | str, root: Path, *, purpose: str) -> Path:
+    """Require a local output path to remain inside an approved ignored data root."""
+
+    candidate = _resolve_local_path(Path(path))
+    allowed_root = _resolve_local_path(root)
     try:
-        candidate.resolve().relative_to(root.resolve())
+        candidate.relative_to(allowed_root)
     except ValueError as error:
         raise ValueError(f"{purpose} must be stored under {root.as_posix()}.") from error
     return candidate

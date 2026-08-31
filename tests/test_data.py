@@ -7,8 +7,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from hcc_survival.constants import DEFAULT_DATA_PATH
 from hcc_survival.data import (
+    _PROCESSED_DATA_ROOT,
     DataValidationError,
+    _local_output_path,
     data_quality_report,
     download_dataset,
     load_local_dataset,
@@ -106,6 +109,70 @@ def test_local_data_errors_and_writes_do_not_escape_ignored_roots(
         download_dataset(missing_cache)
     with pytest.raises(ValueError, match="data/processed"):
         write_data_outputs(features, tmp_path)
+
+
+def test_relative_data_outputs_anchor_to_project_root_from_nested_working_directory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nested project directories cannot create parallel data roots below source."""
+
+    project_root = Path(__file__).resolve().parents[1]
+    monkeypatch.chdir(project_root / "src")
+
+    cache_path = _local_output_path(
+        DEFAULT_DATA_PATH,
+        DEFAULT_DATA_PATH.parent,
+        purpose="Dataset caches",
+    )
+    output_dir = _local_output_path(
+        _PROCESSED_DATA_ROOT,
+        _PROCESSED_DATA_ROOT,
+        purpose="Data summaries",
+    )
+
+    assert cache_path.resolve() == project_root / DEFAULT_DATA_PATH
+    assert output_dir.resolve() == project_root / _PROCESSED_DATA_ROOT
+
+
+def test_data_outputs_reject_nested_source_paths() -> None:
+    """Explicit paths below source remain outside approved local data roots."""
+
+    project_root = Path(__file__).resolve().parents[1]
+
+    with pytest.raises(ValueError, match="data/raw"):
+        _local_output_path(
+            project_root / "src" / "data" / "raw" / "nested.csv",
+            DEFAULT_DATA_PATH.parent,
+            purpose="Dataset caches",
+        )
+    with pytest.raises(ValueError, match="data/processed"):
+        _local_output_path(
+            project_root / "src" / "data" / "processed",
+            _PROCESSED_DATA_ROOT,
+            purpose="Data summaries",
+        )
+
+
+def test_relative_data_outputs_remain_available_outside_the_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """External working directories retain their own local data roots."""
+
+    monkeypatch.chdir(tmp_path)
+
+    cache_path = _local_output_path(
+        DEFAULT_DATA_PATH,
+        DEFAULT_DATA_PATH.parent,
+        purpose="Dataset caches",
+    )
+    output_dir = _local_output_path(
+        _PROCESSED_DATA_ROOT,
+        _PROCESSED_DATA_ROOT,
+        purpose="Data summaries",
+    )
+
+    assert cache_path == (tmp_path / DEFAULT_DATA_PATH).resolve()
+    assert output_dir == (tmp_path / _PROCESSED_DATA_ROOT).resolve()
 
 
 def test_quality_report_is_aggregate_only(
