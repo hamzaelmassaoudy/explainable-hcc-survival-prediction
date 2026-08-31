@@ -208,7 +208,7 @@ def generate_experiment_tables(
     selected_all, selection = _selected_predictions(run_dir)
     patient = _patient_predictions(selected_all)
     for name, subgroup in predefined_subgroups(features).items():
-        exploratory_subgroup_metrics(patient, subgroup).to_csv(
+        exploratory_subgroup_metrics(patient, subgroup, threshold=fixed_threshold).to_csv(
             tables / f"exploratory_subgroup_{name}.csv", index=False
         )
 

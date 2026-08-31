@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import joblib
 import numpy as np
 import pandas as pd
+import pytest
 from matplotlib.axes import Axes
 from pandas.testing import assert_frame_equal
 
@@ -94,7 +95,7 @@ def test_run_metadata_declares_positive_class(synthetic_data, tmp_path) -> None:
 
 
 def test_diagnostic_missingness_aligns_with_validation_row_positions(
-    synthetic_data, tmp_path
+    synthetic_data, tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Diagnostic summaries use the row positions saved in validation artifacts."""
 
@@ -152,9 +153,20 @@ def test_diagnostic_missingness_aligns_with_validation_row_positions(
         json.dumps({"model": "dummy", "variant": "training_selected"}), encoding="utf-8"
     )
 
+    observed_thresholds: list[float] = []
+    original_metrics = diagnostics.exploratory_subgroup_metrics
+
+    def capture_subgroup_threshold(
+        predictions: pd.DataFrame, subgroup: pd.Series, *, threshold: float = 0.5
+    ) -> pd.DataFrame:
+        observed_thresholds.append(threshold)
+        return original_metrics(predictions, subgroup, threshold=threshold)
+
+    monkeypatch.setattr(diagnostics, "exploratory_subgroup_metrics", capture_subgroup_threshold)
     generate_experiment_tables(run_dir, features, target)
 
     summary = pd.read_csv(tables / "anonymous_error_analysis.csv").set_index("anonymous_pattern")
+    assert observed_thresholds == [0.37, 0.37]
     assert summary.loc["incorrect_at_0.37", "value"] == 2.0
     assert summary.loc["within_0.05_of_threshold", "value"] == 1.0
     assert summary.loc["mean_missing_features_in_incorrect_cases", "value"] == 2.0
