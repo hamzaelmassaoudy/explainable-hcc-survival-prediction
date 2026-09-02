@@ -71,6 +71,7 @@ def run_missingness_sensitivity(
     output_dir = ensure_local_output_path(output_dir, purpose="Sensitivity-analysis output")
     output_dir.mkdir(parents=True, exist_ok=True)
     seed = int(config["experiment"]["random_seed"])
+    fixed_threshold = float(config["threshold"]["fixed"])
     outer_folds = int(config["experiment"]["outer_folds"])
     outer_repeats = int(config["experiment"]["outer_repeats"])
     configurations = {
@@ -156,6 +157,7 @@ def run_missingness_sensitivity(
         metrics = classification_metrics(
             patient["observed"].to_numpy(),
             patient["probability_survived_one_year"].to_numpy(),
+            threshold=fixed_threshold,
         )
         feature_counts = fold_metadata_frame.loc[
             fold_metadata_frame["configuration"] == name, "n_features_retained"
@@ -172,6 +174,7 @@ def run_missingness_sensitivity(
     pd.DataFrame(rows).to_csv(output_dir / "missingness_sensitivity_results.csv", index=False)
     manifest = {
         "threshold": MISSINGNESS_EXCLUSION_THRESHOLD,
+        "decision_threshold": fixed_threshold,
         "threshold_rationale": (
             "Predeclared pragmatic threshold: features missing for more than 40% of the "
             "cohort may contribute more missingness-process signal than measured biology."

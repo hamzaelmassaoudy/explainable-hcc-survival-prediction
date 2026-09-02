@@ -220,6 +220,7 @@ def test_missingness_exclusion_is_derived_per_outer_training_partition(
     features = features.copy()
     config = _small_config()
     config["experiment"]["outer_folds"] = 3
+    config["threshold"]["fixed"] = 0.37
     outer = RepeatedStratifiedKFold(n_splits=3, n_repeats=1, random_state=2025)
     first_train, first_validation = next(outer.split(features, target))
     features.loc[first_validation, "Age"] = np.nan
@@ -240,6 +241,7 @@ def test_missingness_exclusion_is_derived_per_outer_training_partition(
     )
 
     result = pd.read_csv(output / "missingness_sensitivity_results.csv")
+    assert result["threshold"].eq(0.37).all()
     selected = result.loc[
         result["configuration"] == "exclude_gt_40pct_with_numeric_indicators"
     ].iloc[0]
@@ -249,3 +251,5 @@ def test_missingness_exclusion_is_derived_per_outer_training_partition(
     ]
     assert selected["n_features_min_across_outer_training_partitions"] == counts.min()
     assert selected["n_features_max_across_outer_training_partitions"] == counts.max()
+    manifest = json.loads((output / "missingness_sensitivity_manifest.json").read_text())
+    assert manifest["decision_threshold"] == 0.37
