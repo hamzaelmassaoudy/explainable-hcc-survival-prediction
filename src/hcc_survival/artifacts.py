@@ -121,7 +121,7 @@ def create_run_directory(config: dict[str, Any], root: Path | str = DEFAULT_ARTI
         run_dir / "provenance.json",
         {
             "configuration_sha256": hashlib.sha256(config_text.encode()).hexdigest(),
-            "git": git_state(Path.cwd()),
+            "git": git_state(PROJECT_ROOT),
         },
     )
     return run_dir
