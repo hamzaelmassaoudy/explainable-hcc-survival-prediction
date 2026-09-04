@@ -1,4 +1,4 @@
-# Implementation Plan and Scientific Safeguards
+# Architecture and Scientific Safeguards
 
 ## Purpose
 

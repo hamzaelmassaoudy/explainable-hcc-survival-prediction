@@ -43,7 +43,18 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 data/cache/
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.ods
 *.parquet
+*.feather
+*.arrow
+*.arff
+*.sav
+*.dta
+*.sas7bdat
 
 # Local reports, experiment outputs, and model binaries
 reports/

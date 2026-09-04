@@ -27,8 +27,9 @@ causal relationships, or external generalization.
 
 - Fixed-seed synthetic experiments reproduce the tested patient-level predictions and
   aggregate metrics.
-- Model serialization has a save/load consistency test; an absent or malformed local model
-  produces an actionable error.
+- Model serialization enforces the canonical ordered feature manifest and has a save/load
+  consistency test; an absent, malformed, or incompatible local model produces an actionable
+  error.
 - Prediction inputs reject unknown columns, nonnumeric nonmissing values, invalid category
   codes, and values outside broad quality bounds. Output rows use validated values rather
   than raw uploaded text.

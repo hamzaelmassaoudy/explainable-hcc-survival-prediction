@@ -7,10 +7,25 @@ repository intentionally does not claim bitwise reproducibility across operating
 or every compatible dependency version. Each local experiment records its exact package
 versions and configuration in an ignored artifact directory.
 
-```bash
+```console
 python -m venv .venv
-# Windows: .venv\Scripts\activate
-# Linux/macOS: source .venv/bin/activate
+```
+
+Activate the environment in PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or activate it in a POSIX shell:
+
+```bash
+source .venv/bin/activate
+```
+
+Then install the development, application, and optional boosting dependencies:
+
+```console
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev,app,boosting]"
 ```

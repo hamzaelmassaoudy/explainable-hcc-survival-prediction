@@ -94,6 +94,41 @@ def test_corrupt_or_malformed_model_artifact_has_safe_recovery_message(tmp_path)
         load_model_bundle(malformed)
 
 
+@pytest.mark.parametrize(
+    "feature_names",
+    [
+        None,
+        list(reversed(FEATURE_NAMES)),
+        [*FEATURE_NAMES[:-1], "UnexpectedFeature"],
+    ],
+    ids=["missing", "reordered", "altered"],
+)
+def test_model_bundle_requires_current_feature_manifest(
+    tmp_path, feature_names: list[str] | None
+) -> None:
+    path = tmp_path / "incompatible.joblib"
+    bundle = {"model": _FixedProbabilityModel()}
+    if feature_names is not None:
+        bundle["feature_names"] = feature_names
+    joblib.dump(bundle, path)
+
+    with pytest.raises(ModelArtifactError, match="current HCC feature schema") as error:
+        load_model_bundle(path)
+    assert str(path) not in str(error.value)
+    assert "UnexpectedFeature" not in str(error.value)
+
+
+def test_model_bundle_accepts_current_feature_manifest(tmp_path) -> None:
+    path = tmp_path / "compatible.joblib"
+    expected_features = list(FEATURE_NAMES)
+    joblib.dump(
+        {"model": _FixedProbabilityModel(), "feature_names": expected_features},
+        path,
+    )
+
+    assert load_model_bundle(path)["feature_names"] == expected_features
+
+
 def test_missing_model_artifact_does_not_echo_local_path(tmp_path) -> None:
     missing = tmp_path / "private-model.joblib"
     with pytest.raises(FileNotFoundError) as error:

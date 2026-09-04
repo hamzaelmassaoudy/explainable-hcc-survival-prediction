@@ -167,6 +167,12 @@ def load_model_bundle(path: Path | str) -> dict[str, Any]:
             "The local model artifact does not provide a usable probability estimator. "
             f"Regenerate the provisional local research model with `{MODEL_RECOVERY_COMMAND}`."
         )
+    feature_names = bundle.get("feature_names")
+    if not isinstance(feature_names, list) or feature_names != list(FEATURE_NAMES):
+        raise ModelArtifactError(
+            "The local model artifact does not match the current HCC feature schema. "
+            f"Regenerate the provisional local research model with `{MODEL_RECOVERY_COMMAND}`."
+        )
     return bundle
 
 

@@ -1,7 +1,7 @@
 # Explainable HCC Survival Prediction
 
-A developer-facing, research-only prototype for studying predictive associations between
-tabular variables and one-year survival in the UCI HCC Survival cohort.
+A research-only Python project for studying predictive associations between tabular
+variables and one-year survival in the UCI HCC Survival cohort.
 
 > **Research-only prototype.** This project is not clinically validated or deployment ready.
 > It must not be used for diagnosis, patient prognosis communication, treatment selection,
@@ -15,10 +15,10 @@ The scientific question is whether tabular variables in this cohort can support 
 validated, leakage-safe estimates of one-year survival probability. The project studies
 predictive association, not causation.
 
-Its intended methodology uses repeated nested cross-validation for internal validation.
-Preprocessing, feature selection, tuning, calibration, and any threshold selection must be
-fit within training folds. A final all-data fitted model, if developed, is a research
-artifact and does not provide an independent clinical-performance estimate.
+The evaluation workflow uses repeated nested cross-validation for internal validation.
+Preprocessing, feature selection, tuning, calibration, and any threshold selection are fit
+within training folds. The optional final all-data fit is a separate research artifact; it
+does not provide an independent estimate of clinical performance.
 
 ## Data boundary
 
@@ -46,6 +46,50 @@ those materials remain ignored and are not published here.
 The included Streamlit interface is a local research demonstration, not a secure health-data
 service. Do not upload identifiable health information or deploy it for clinical use.
 
+## Quick start
+
+The project supports Python 3.11 and 3.12. Clone it and create a virtual environment:
+
+```console
+git clone https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction.git
+cd explainable-hcc-survival-prediction
+python -m venv .venv
+```
+
+Activate the environment in PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Or activate it in a POSIX shell:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the project and run the offline smoke tests:
+
+```console
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev,app,boosting]"
+python -m hcc_survival --help
+pytest -m "not integration"
+```
+
+Ordinary installation and tests do not download the dataset. To run a local research
+workflow explicitly:
+
+```console
+python -m hcc_survival download
+python -m hcc_survival validate-data
+python -m hcc_survival train --config configs/fast.yaml --fit-final
+streamlit run app/streamlit_app.py
+```
+
+The download command requires network access. Data, trained models, experiment artifacts,
+and application outputs remain in ignored local directories.
+
 ## Project layout
 
 The project follows ordinary scientific Python conventions: `src/` contains package code,
@@ -66,6 +110,9 @@ contains continuous-integration configuration.
 - [Methods](docs/METHODS.md)
 - [Model card](docs/MODEL_CARD.md)
 - [Reproducibility guide](docs/REPRODUCIBILITY.md)
+- [Architecture and scientific safeguards](docs/IMPLEMENTATION_PLAN.md)
+- [Test evidence](docs/TEST_EVIDENCE.md)
+- [Release checklist](docs/RELEASE_CHECKLIST.md)
 - [Security](SECURITY.md)
 
 ## Citation and license
@@ -73,4 +120,4 @@ contains continuous-integration configuration.
 Original repository code is available under the [MIT License](LICENSE). Please cite the
 software using [CITATION.cff](CITATION.cff) and retain the UCI dataset attribution to Santos
 et al. (2015), DOI 10.24432/C5TS4S. The UCI dataset is CC BY 4.0 and is not redistributed;
-future dependencies retain their own licenses.
+third-party dependencies retain their own licenses.

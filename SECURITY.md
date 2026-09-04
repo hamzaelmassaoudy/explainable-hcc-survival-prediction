@@ -17,6 +17,13 @@ Treat a suspected credential or patient-data exposure as urgent: stop distributi
 rotate the affected credential where applicable, preserve evidence locally, and seek a
 maintainer review before attempting a history rewrite.
 
+## Local model artifacts
+
+Joblib files can execute code while they are being deserialized. Load only model artifacts
+created locally from reviewed project code; never load an artifact from an untrusted source.
+The application's feature-schema check detects incompatible bundles after loading, but it is
+not a security sandbox. Model files remain local and ignored by Git.
+
 ## Supported versions
 
 Only the current `main` branch is supported. The project is a research-only prototype and does

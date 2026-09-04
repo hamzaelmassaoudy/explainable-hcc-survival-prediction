@@ -18,6 +18,9 @@ secrets.
 `data/cache/`, `models/`, `logs/`, and `local_audit/` are local-only paths. Generated outputs
 can support local scientific review but are not public release materials.
 
+Common tabular-data formats are ignored repository-wide as a defense-in-depth measure.
+Public tests construct synthetic data in code instead of committing example datasets.
+
 ## Commit hygiene
 
 Before a public contribution, inspect the explicit staged paths and review the staged diff

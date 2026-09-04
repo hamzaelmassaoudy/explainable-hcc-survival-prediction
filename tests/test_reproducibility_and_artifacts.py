@@ -68,7 +68,7 @@ def test_save_load_prediction_consistency(synthetic_data, tmp_path) -> None:
     features, target = synthetic_data
     model, _ = build_model("logistic_regression", seed=11)
     model.fit(features, target)
-    bundle = {"model": model}
+    bundle = {"model": model, "feature_names": list(features.columns)}
     path = tmp_path / "model.joblib"
     joblib.dump(bundle, path)
     loaded = load_model_bundle(path)
