@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible problem with an existing workflow.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic inputs when describing a problem. Do not include patient data,
+        model files, credentials, local reports, or private paths. For vulnerabilities,
+        follow SECURITY.md rather than opening a public bug report.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the command or a minimal example using synthetic inputs.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Python version, operating system, and project commit or version.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Relevant error
+      description: Include only the relevant error text, with private paths and values removed.
+      render: text

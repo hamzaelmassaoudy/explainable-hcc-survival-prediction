@@ -58,8 +58,8 @@ def aggregate_permutation_importance(run_dir: Path | str) -> Path:
         "The permutation-importance table was calculated on held-out outer-fold patients. "
         "It is validation-aligned predictive importance, not causal evidence. Importance "
         "may be shared or unstable when predictors are correlated.\n\n"
-        "SHAP is generated only for a compatible selected final model and, when generated, "
-        "describes that all-data fitted model rather than unbiased generalizable importance.\n",
+        "The current explanation workflow exports permutation importance; "
+        "it does not generate SHAP explanations.\n",
         encoding="utf-8",
     )
     return path

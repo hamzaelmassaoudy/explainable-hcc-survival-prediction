@@ -1,10 +1,25 @@
 # Contributing
 
+## Before opening an issue
+
+Check the [setup instructions](README.md#getting-started) and
+[documentation index](docs/README.md). For a bug report, include the command, expected and
+observed behavior, Python version, operating system, and project version or commit. Use a
+small synthetic example and remove private paths from error text.
+
+Documentation corrections can be reported with the page, section, and proposed wording.
+For vulnerabilities or sensitive disclosures, follow the [security policy](SECURITY.md).
+
 ## Scope and workflow
 
 This project accepts ordinary developer contributions through focused branches and pull
 requests. Use conventional commit messages, keep each pull request cohesive, and describe any
 change to scientific behavior or public documentation.
+
+1. Create a focused branch from the current `main` branch.
+2. Make the smallest coherent change and update the relevant documentation.
+3. Run the quality checks and review the exact files included in the diff.
+4. Open a pull request explaining the problem, resulting behavior, and validation results.
 
 The repository includes a local data loader, schema validation, fold-local preprocessing,
 candidate models, repeated nested validation, research commands, and focused synthetic tests.
@@ -16,6 +31,8 @@ python -m pip install -e ".[dev,app]"
 pytest
 ruff check .
 ruff format --check .
+python -m build
+python scripts/check_distribution_contents.py --dist-dir dist
 ```
 
 Install `.[boosting]` as well when changing or running configurations that include XGBoost.

@@ -6,6 +6,9 @@ Notable changes to the project are documented here.
 
 ### Changed
 
+- Reorganized the project overview, setup instructions, and documentation navigation.
+- Added issue and pull-request templates for focused contributions.
+- Clarified that the current explanation workflow exports permutation importance.
 - Strengthened validation for experiment configuration, model selection, survival metrics,
   calibration inputs, and bootstrap settings.
 - Applied the configured decision threshold consistently across bootstrap, subgroup,

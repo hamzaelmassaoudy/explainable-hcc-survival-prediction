@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Installation and usage
+    url: https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/blob/main/README.md#getting-started
+    about: Check setup and workflow instructions before reporting a problem.
+  - name: Security policy
+    url: https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/blob/main/SECURITY.md
+    about: Read the private reporting guidance before sharing a potential vulnerability.

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "hcc-survival"
 version = "0.1.0"
-description = "Leakage-safe, explainable one-year HCC survival prediction research case study"
+description = "Explainable tabular machine learning for one-year HCC survival prediction"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { text = "MIT" }
@@ -39,6 +39,8 @@ dev = [
 
 [project.urls]
 Repository = "https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction"
+Documentation = "https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/blob/main/docs/README.md"
+Issues = "https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/hcc_survival"]
@@ -67,9 +69,11 @@ only-include = [
   "docs/METHODS.md",
   "docs/MODEL_CARD.md",
   "docs/PRIVACY.md",
+  "docs/README.md",
   "docs/RELEASE_CHECKLIST.md",
   "docs/REPRODUCIBILITY.md",
   "docs/TEST_EVIDENCE.md",
+  "docs/assets/header.svg",
   "scripts/check_distribution_contents.py",
   "scripts/verify_project.py",
   "src",

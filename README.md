@@ -1,123 +1,186 @@
+![Explainable HCC Survival Prediction — prepare, evaluate, explain](docs/assets/header.svg)
+
 # Explainable HCC Survival Prediction
 
-A research-only Python project for studying predictive associations between tabular
-variables and one-year survival in the UCI HCC Survival cohort.
+A Python machine-learning project exploring one-year survival prediction with tabular
+clinical data. It brings together reusable preprocessing, model comparison, careful
+validation, and a local Streamlit demonstration.
 
-> **Research-only prototype.** This project is not clinically validated or deployment ready.
-> It must not be used for diagnosis, patient prognosis communication, treatment selection,
-> triage, resource allocation, or any other medical decision.
+[![CI](https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction/actions/workflows/ci.yml)
+[![Python 3.11–3.12](https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-0f766e)](LICENSE)
 
-## Scientific scope
+[Getting started](#getting-started) · [Workflow](#workflow) ·
+[Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md)
 
-The modeled quantity is `P(survived at one year)`: `1 = survived at one year` and
-`0 = died within one year`. Outputs are described only as one-year survival probabilities.
-The scientific question is whether tabular variables in this cohort can support internally
-validated, leakage-safe estimates of one-year survival probability. The project studies
-predictive association, not causation.
+> **For education and research only.** This prototype is not clinically validated or
+> deployment ready. Do not use it for diagnosis, patient prognosis communication,
+> treatment selection, triage, resource allocation, or any other medical decision.
 
-The evaluation workflow uses repeated nested cross-validation for internal validation.
-Preprocessing, feature selection, tuning, calibration, and any threshold selection are fit
-within training folds. The optional final all-data fit is a separate research artifact; it
-does not provide an independent estimate of clinical performance.
+## What the project includes
 
-## Data boundary
+| Component | Implemented capabilities |
+| --- | --- |
+| Data handling | Explicit UCI retrieval, a checked-in 49-feature schema, target validation, and missing-value handling |
+| Preprocessing | Numerical, categorical, and ordinal transformations fitted inside training folds |
+| Model comparison | A dummy baseline, two logistic-regression benchmarks, a constrained random forest, and optional CPU XGBoost |
+| Evaluation | Repeated nested stratified cross-validation, training-only calibration and threshold selection, and patient-level uncertainty summaries |
+| Explainability | Held-out permutation importance, variability across folds, and local explanatory plots |
+| Interface | A command-line workflow and a local Streamlit demo with validated single-record and batch inputs |
+| Engineering | Synthetic tests, lint and formatting checks, package-content checks, and recorded local run metadata |
 
-The project uses the public [UCI HCC Survival dataset](https://archive.ics.uci.edu/dataset/423/hcc+survival)
-(UCI ID 423; [DOI 10.24432/C5TS4S](https://doi.org/10.24432/C5TS4S); CC BY 4.0).
-Raw and processed patient-level data are retrieved and retained locally only; they are never
-redistributed through this repository.
-Generated reports, figures, tables, run artifacts, models, and logs are also intentionally
-excluded from version control.
+The emphasis is on making the modeling decisions inspectable: how missing values are
+handled, how models are compared, and how probabilities are evaluated. The current
+explanation workflow uses permutation importance; it does not generate SHAP explanations.
 
-## Current project scope
+## Getting started
 
-The repository provides a local UCI dataset loader and schema validation, fold-local
-preprocessing, conservative candidate-model factories, calibration controls, repeated nested
-cross-validation, patient-level uncertainty summaries, and a research command-line interface.
-It also includes local-only exploratory, diagnostic, sensitivity, reporting, and
-explainability tools. The loader validates the documented feature names, binary survival target,
-and 165-record dataset contract before it writes a cache under ignored `data/raw/`.
+Use **Python 3.11 or 3.12**. Run the commands from the repository root.
 
-The preprocessor returns an unfitted scikit-learn transformer for imputation, encoding, optional
-scaling, and missingness indicators; it must be fitted within each training fold. Installation
-and tests do not download any data. Local runs can create models and patient-derived outputs, but
-those materials remain ignored and are not published here.
+### 1. Clone and create an environment
 
-The included Streamlit interface is a local research demonstration, not a secure health-data
-service. Do not upload identifiable health information or deploy it for clinical use.
-
-## Quick start
-
-The project supports Python 3.11 and 3.12. Clone it and create a virtual environment:
-
-```console
+~~~console
 git clone https://github.com/hamzaelmassaoudy/explainable-hcc-survival-prediction.git
 cd explainable-hcc-survival-prediction
 python -m venv .venv
-```
+~~~
 
-Activate the environment in PowerShell:
+Activate the environment using the command for your shell:
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+| Shell | Command |
+| --- | --- |
+| PowerShell | `.\.venv\Scripts\Activate.ps1` |
+| Bash / Zsh | `source .venv/bin/activate` |
 
-Or activate it in a POSIX shell:
+### 2. Install and check the package
 
-```bash
-source .venv/bin/activate
-```
-
-Install the project and run the offline smoke tests:
-
-```console
+~~~console
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev,app,boosting]"
 python -m hcc_survival --help
-pytest -m "not integration"
-```
+python -m pytest -m "not integration"
+~~~
 
-Ordinary installation and tests do not download the dataset. To run a local research
-workflow explicitly:
+The `app` extra installs Streamlit; `boosting` installs XGBoost for the supplied
+configurations. Installation and ordinary tests do not retrieve the dataset.
 
-```console
+### 3. Run a local example
+
+~~~console
 python -m hcc_survival download
 python -m hcc_survival validate-data
 python -m hcc_survival train --config configs/fast.yaml --fit-final
 streamlit run app/streamlit_app.py
-```
+~~~
 
-The download command requires network access. Data, trained models, experiment artifacts,
-and application outputs remain in ignored local directories.
+Dataset retrieval requires internet access. Training creates an ignored local run directory
+and, with `--fit-final`, a local model for the app. If that model is absent, the app displays
+the recovery command. The fast configuration is for development; it is not the full
+internal-validation analysis.
 
-## Project layout
+## Workflow
 
-The project follows ordinary scientific Python conventions: `src/` contains package code,
-`tests/` contains synthetic tests, `configs/` contains experiment settings, `data/` contains
-local-data instructions, `docs/` contains methodology and development guidance, `app/` contains
-the local research interface, `scripts/` contains local verification tooling, and `.github/`
-contains continuous-integration configuration.
+~~~mermaid
+flowchart LR
+    A[Retrieve and validate data] --> B[Fit preprocessing in training folds]
+    B --> C[Tune and calibrate models]
+    C --> D[Evaluate held-out probabilities]
+    D --> E[Summarize and explain locally]
+~~~
+
+The outcome is **one-year survival**, with `1 = survived at one year` and
+`0 = died within one year`. Every prediction uses that direction. This is a fixed-horizon
+binary prediction task; the project studies predictive associations, not causal effects.
+
+| Configuration | Outer folds | Repetitions | Inner folds | Bootstrap resamples | Purpose |
+| --- | ---: | ---: | ---: | ---: | --- |
+| [fast.yaml](configs/fast.yaml) | 3 | 1 | 2 | 200 | Development and smoke runs |
+| [full.yaml](configs/full.yaml) | 5 | 5 | 3 | 2,000 | Full internal-validation analysis |
+
+In the full design, each patient receives five held-out probabilities. These are averaged
+at patient level before aggregate metrics and bootstrap intervals are calculated.
+Preprocessing, tuning, calibration, threshold selection, and data-derived feature choices
+remain within training partitions. An optional final fit uses all available data and has
+no independent performance estimate. See the [methods](docs/METHODS.md) for details.
+
+<details>
+<summary><strong>Run the full workflow and inspect local outputs</strong></summary>
+
+~~~console
+python -m hcc_survival train --config configs/full.yaml --fit-final
+python -m hcc_survival sensitivity --config configs/full.yaml
+~~~
+
+Training prints the newly created directory under `artifacts/runs/`. Use that directory
+with the `--run-dir` option of the `report` and `explain` commands. Each command also
+provides its own help:
+
+~~~console
+python -m hcc_survival report --help
+python -m hcc_survival explain --help
+python -m hcc_survival sensitivity --help
+~~~
+
+Run configurations and package versions are recorded locally. Detailed instructions and
+determinism limits are in the [reproducibility guide](docs/REPRODUCIBILITY.md).
+
+</details>
+
+## Dataset and interpretation
+
+The project uses the [UCI HCC Survival dataset](https://archive.ics.uci.edu/dataset/423/hcc+survival):
+**165 records and 49 predictors**, UCI ID 423,
+[DOI 10.24432/C5TS4S](https://doi.org/10.24432/C5TS4S), licensed under CC BY 4.0.
+The loader checks the schema, target coding, and record count before writing a local cache.
+
+The small single-source cohort, substantial missingness, model-selection optimism, and
+lack of external validation limit the conclusions that can be drawn. Bootstrap intervals
+describe conditional internal-validation uncertainty. See the [data card](docs/DATA_CARD.md),
+[model card](docs/MODEL_CARD.md), and [limitations](docs/LIMITATIONS.md).
+
+**The public repository contains source, configurations, tests, and documentation.**
+Patient-level data, fitted models, predictions, run artifacts, generated reports, plots,
+tables, and logs remain local and ignored. No benchmark result or clinical-performance
+claim is published here. See the [data policy](docs/PRIVACY.md). The app is a local
+demonstration and must not receive identifiable health information.
+
+## Repository map
+
+~~~text
+src/hcc_survival/   Package: data, preprocessing, models, evaluation, and prediction
+app/               Local Streamlit demonstration
+configs/           Fast and full experiment settings
+tests/             Synthetic unit and workflow tests
+docs/              Guides, methods, data and model cards, and project policies
+data/              Dataset instructions and ignored local cache directories
+scripts/           Local verification and distribution-content checks
+.github/           Continuous integration and contribution templates
+~~~
 
 ## Documentation
 
-- [Intended and prohibited use](docs/INTENDED_USE.md)
-- [Privacy and data policy](docs/PRIVACY.md)
-- [Limitations](docs/LIMITATIONS.md)
-- [Development guide](docs/DEVELOPMENT.md)
-- [Data policy and attribution](data/README.md)
-- [Data dictionary](docs/DATA_DICTIONARY.md)
-- [Data card](docs/DATA_CARD.md)
-- [Methods](docs/METHODS.md)
-- [Model card](docs/MODEL_CARD.md)
-- [Reproducibility guide](docs/REPRODUCIBILITY.md)
-- [Architecture and scientific safeguards](docs/IMPLEMENTATION_PLAN.md)
-- [Test evidence](docs/TEST_EVIDENCE.md)
-- [Release checklist](docs/RELEASE_CHECKLIST.md)
-- [Security](SECURITY.md)
+| Start here | Read next |
+| --- | --- |
+| [Documentation index](docs/README.md) | All guides organized by purpose |
+| [Learning guide](docs/LEARNING_GUIDE.md) | Modeling concepts and metric interpretation |
+| [Methods](docs/METHODS.md) | Validation, calibration, thresholds, and uncertainty |
+| [Reproducibility](docs/REPRODUCIBILITY.md) | Environment, commands, and local run outputs |
+| [Development](docs/DEVELOPMENT.md) | Package structure and quality checks |
+| [Test evidence](docs/TEST_EVIDENCE.md) | The behaviors covered by synthetic tests |
 
-## Citation and license
+## Contributing
 
-Original repository code is available under the [MIT License](LICENSE). Please cite the
-software using [CITATION.cff](CITATION.cff) and retain the UCI dataset attribution to Santos
-et al. (2015), DOI 10.24432/C5TS4S. The UCI dataset is CC BY 4.0 and is not redistributed;
-third-party dependencies retain their own licenses.
+Focused improvements to documentation, tests, and existing workflows are welcome.
+Read the [contribution guide](CONTRIBUTING.md) before opening an issue or pull request.
+Report vulnerabilities using the [security policy](SECURITY.md), and follow the
+[code of conduct](CODE_OF_CONDUCT.md).
+
+## Author, citation, and license
+
+Maintained by [Hamza El Massaoudy](https://github.com/hamzaelmassaoudy).
+Original repository code is available under the [MIT License](LICENSE).
+Software citation metadata is provided in [CITATION.cff](CITATION.cff).
+
+Dataset attribution: Santos, M., Abreu, P., Garcia-Laencina, P., Simao, A., and Carvalho, A.
+(2015). *HCC Survival*. UCI Machine Learning Repository. DOI 10.24432/C5TS4S.
+The dataset is separately licensed under CC BY 4.0; dependencies retain their own licenses.

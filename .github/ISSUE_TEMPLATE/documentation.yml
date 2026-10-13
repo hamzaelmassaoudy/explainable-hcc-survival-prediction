@@ -1,0 +1,20 @@
+name: Documentation improvement
+description: Suggest clearer instructions or a correction to the documentation.
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Page or section
+      description: Link to the document or name the relevant section.
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Suggested improvement
+      description: Explain what is unclear or inaccurate and how it could be improved.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Do not attach patient data, generated reports, model files, or private information.
